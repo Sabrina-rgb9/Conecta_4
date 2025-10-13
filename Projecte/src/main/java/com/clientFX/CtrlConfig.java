@@ -1,4 +1,4 @@
-package com.client;
+package com.clientFX;
 
 import java.net.URL;
 import java.util.ResourceBundle;
