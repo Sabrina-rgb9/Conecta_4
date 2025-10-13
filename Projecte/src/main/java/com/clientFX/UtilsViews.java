@@ -1,4 +1,4 @@
-package com.client;
+package com.clientFX;
 
 import java.util.ArrayList;
 

@@ -1,4 +1,4 @@
-package com.client;
+package com.clientFX;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -6,15 +6,12 @@ import java.util.List;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import com.shared.ClientData;
-import com.shared.GameObject;
-
+import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.animation.PauseTransition;
-import javafx.scene.paint.Color;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
@@ -22,13 +19,13 @@ public class Main extends Application {
 
     public static UtilsWS wsClient;
 
-    public static String clientName = "";
-    public static List<ClientData> clients;
-    public static List<GameObject> objects;
+    public static int port = 3000;
+    public static String protocol = "http";
+    public static String host = "localhost";
+    public static String protocolWS = "ws";
 
     public static CtrlConfig ctrlConfig;
-    public static CtrlWait ctrlWait;
-    public static CtrlPlay ctrlPlay;
+    public static CtrlSockets ctrlSockets;
 
     public static void main(String[] args) {
 
@@ -44,18 +41,16 @@ public class Main extends Application {
 
         UtilsViews.parentContainer.setStyle("-fx-font: 14 arial;");
         UtilsViews.addView(getClass(), "ViewConfig", "/assets/viewConfig.fxml"); 
-        UtilsViews.addView(getClass(), "ViewWait", "/assets/viewWait.fxml");
-        UtilsViews.addView(getClass(), "ViewPlay", "/assets/viewPlay.fxml");
+        UtilsViews.addView(getClass(), "ViewSockets", "/assets/viewSockets.fxml");
 
         ctrlConfig = (CtrlConfig) UtilsViews.getController("ViewConfig");
-        ctrlWait = (CtrlWait) UtilsViews.getController("ViewWait");
-        ctrlPlay = (CtrlPlay) UtilsViews.getController("ViewPlay");
+        ctrlSockets = (CtrlSockets) UtilsViews.getController("ViewSockets");
 
         Scene scene = new Scene(UtilsViews.parentContainer);
         
         stage.setScene(scene);
         stage.onCloseRequestProperty(); // Call close method when closing window
-        stage.setTitle("JavaFX");
+        stage.setTitle("JavaFX - NodeJS");
         stage.setMinWidth(windowWidth);
         stage.setMinHeight(windowHeight);
         stage.show();
@@ -66,6 +61,7 @@ public class Main extends Application {
             stage.getIcons().add(icon);
         }
     }
+
 
     @Override
     public void stop() { 
@@ -108,60 +104,18 @@ public class Main extends Application {
     }
    
     private static void wsMessage(String response) {
-        
-        // System.out.println(response);
-        
-        JSONObject msgObj = new JSONObject(response);
-        switch (msgObj.getString("type")) {
-            case "serverData":
-                clientName = msgObj.getString("clientName");
-
-                JSONArray arrClients = msgObj.getJSONArray("clientsList");
-                List<ClientData> newClients = new ArrayList<>();
-                for (int i = 0; i < arrClients.length(); i++) {
-                    JSONObject obj = arrClients.getJSONObject(i);
-                    newClients.add(ClientData.fromJSON(obj));
-                }
-                clients = newClients;
-
-                JSONArray arrObjects = msgObj.getJSONArray("objectsList");
-                List<GameObject> newObjects = new ArrayList<>();
-                for (int i = 0; i < arrObjects.length(); i++) {
-                    JSONObject obj = arrObjects.getJSONObject(i);
-                    newObjects.add(GameObject.fromJSON(obj));
-                }
-                objects = newObjects;
-
-                if (clients.size() == 1) {
-
-                    ctrlWait.txtPlayer0.setText(clients.get(0).name);
-
-                } else if (clients.size() > 1) {
-
-                    ctrlWait.txtPlayer0.setText(clients.get(0).name);
-                    ctrlWait.txtPlayer1.setText(clients.get(1).name);
-                    ctrlPlay.title.setText(clients.get(0).name + " vs " + clients.get(1).name);
-                }
-                
-                if (UtilsViews.getActiveView().equals("ViewConfig")) {
-                    UtilsViews.setViewAnimating("ViewWait");
-                }
-
-                break;
-            
-            case "countdown":
-                int value = msgObj.getInt("value");
-                String txt = String.valueOf(value);
-                if (value == 0) {
-                    UtilsViews.setViewAnimating("ViewPlay");
-                    txt = "GO";
-                }
-                ctrlWait.txtTitle.setText(txt);
-                break;
-        }
+        Platform.runLater(()->{ 
+            // Fer aquí els canvis a la interficie
+            if (UtilsViews.getActiveView() != "ViewSockets") {
+                UtilsViews.setViewAnimating("ViewSockets");
+            }
+            JSONObject msgObj = new JSONObject(response);
+            ctrlSockets.receiveMessage(msgObj);
+        });
     }
 
     private static void wsError(String response) {
+
         String connectionRefused = "Connection refused";
         if (response.indexOf(connectionRefused) != -1) {
             ctrlConfig.txtMessage.setTextFill(Color.RED);
