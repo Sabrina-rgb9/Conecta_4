@@ -1,135 +1,170 @@
 package com.clientFX;
 
-import java.net.URL;
-import java.util.ResourceBundle;
-
-import org.json.JSONObject;
-
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.fxml.Initializable;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
+import javafx.util.Duration;
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.handshake.ServerHandshake;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
-public class CtrlConnecta4 implements Initializable {
+import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
 
-    @FXML private Label lblServerStatus;
-    @FXML private Label lblPlayerName;
-    @FXML private Label lblTurn;
-    @FXML private Canvas gameCanvas;
-    @FXML private Button btnPlay;
-    @FXML private Button btnConnect;
+public class CtrlConnecta4 {
 
-    private boolean connected = false;
-    private boolean isMyTurn = false;
-    private String myRole = "";
+    @FXML private Canvas canvas;
+    @FXML private Pane root;
+
+    private WebSocketClient wsClient;
+    private String clientName;
+    private String role; // "R" o "Y"
+    private JSONObject gameState;
     private double mouseX, mouseY;
+    private Map<String, double[]> opponentMouse = new HashMap<>();
 
-    @Override
-    public void initialize(URL url, ResourceBundle rb) {
-        drawBoard();
+    private final int rows = 6;
+    private final int cols = 7;
+    private final double cellSize = 80;
 
-        // Hover: enviar movimiento de ratón al servidor
-        gameCanvas.addEventHandler(MouseEvent.MOUSE_MOVED, e -> {
-            if (connected) {
-                mouseX = e.getX();
-                mouseY = e.getY();
-                JSONObject msg = new JSONObject();
-                msg.put("type", "clientMouseMoving");
-                msg.put("x", mouseX);
-                msg.put("y", mouseY);
-                Main.wsClient.safeSend(msg.toString());
-            }
-        });
+    private Timeline renderLoop;
 
-        // Clic: jugar una ficha
-        gameCanvas.addEventHandler(MouseEvent.MOUSE_CLICKED, e -> {
-            if (connected && isMyTurn) {
-                int col = (int) (e.getX() / (gameCanvas.getWidth() / 7));
-                JSONObject msg = new JSONObject();
-                msg.put("type", "clientPlay");
-                msg.put("col", col);
-                Main.wsClient.safeSend(msg.toString());
-            }
-        });
+    // ---------------- Conexión al servidor ----------------
+    public void connect(String url) {
+        try {
+            wsClient = new WebSocketClient(new URI(url)) {
+                @Override
+                public void onOpen(ServerHandshake handshakedata) {
+                    System.out.println("Conectado al servidor");
+                    sendReady();
+                }
+
+                @Override
+                public void onMessage(String message) {
+                    JSONObject obj = new JSONObject(message);
+                    handleServerMessage(obj);
+                }
+
+                @Override
+                public void onClose(int code, String reason, boolean remote) {
+                    System.out.println("Desconectado: " + reason);
+                }
+
+                @Override
+                public void onError(Exception ex) {
+                    ex.printStackTrace();
+                }
+            };
+            wsClient.connect();
+        } catch (Exception e) { e.printStackTrace(); }
     }
 
-    @FXML
-    private void handleConnect() {
-        if (!connected) {
-            Main.wsClient.connect();
-            lblServerStatus.setText("Connecting...");
+    // ---------------- Eventos de cliente ----------------
+    private void sendReady() {
+        JSONObject obj = new JSONObject();
+        obj.put("type", "clientReady");
+        wsClient.send(obj.toString());
+    }
+
+    private void sendPlay(int col) {
+        if (gameState != null && clientName.equals(gameState.getJSONObject("game").getString("turn"))) {
+            JSONObject obj = new JSONObject();
+            obj.put("type", "clientPlay");
+            obj.put("col", col);
+            wsClient.send(obj.toString());
         }
     }
 
-    @FXML
-    private void handlePlay() {
-        // Si el jugador está esperando o quiere iniciar partida
-        JSONObject msg = new JSONObject();
-        msg.put("type", "clientReady");
-        Main.wsClient.safeSend(msg.toString());
+    private void sendMouse(double x, double y) {
+        JSONObject obj = new JSONObject();
+        obj.put("type", "clientMouseMoving");
+        obj.put("x", x);
+        obj.put("y", y);
+        wsClient.send(obj.toString());
     }
 
-    // Llamado por Main.wsClient cuando se recibe un mensaje
-    public void receiveMessage(JSONObject messageObj) {
-        String type = messageObj.getString("type");
+    // ---------------- Manejo de mensajes del servidor ----------------
+    private void handleServerMessage(JSONObject obj) {
+        String type = obj.getString("type");
 
-        if (type.equals("serverData")) {
-            JSONObject game = messageObj.getJSONObject("game");
-            String status = game.getString("status");
-            String turn = game.getString("turn");
-            myRole = messageObj.getString("role");
-            isMyTurn = turn.equals(messageObj.getString("clientName"));
-
-            lblTurn.setText("Turno: " + turn);
-            lblServerStatus.setText("Estado: " + status);
-            drawBoardFromServer(game);
-        } 
-        else if (type.equals("countdown")) {
-            int count = messageObj.getInt("value");
-            lblServerStatus.setText("Empieza en: " + count);
+        switch (type) {
+            case "serverData" -> {
+                clientName = obj.getString("clientName");
+                role = obj.getString("role");
+                gameState = obj.getJSONObject("game");
+            }
+            case "clientMouseMoving" -> {
+                String player = obj.getString("player");
+                if (!player.equals(clientName)) {
+                    opponentMouse.put(player, new double[]{obj.getDouble("x"), obj.getDouble("y")});
+                }
+            }
         }
     }
 
-    private void drawBoard() {
-        GraphicsContext gc = gameCanvas.getGraphicsContext2D();
-        gc.setFill(Color.LIGHTGRAY);
-        gc.fillRect(0, 0, gameCanvas.getWidth(), gameCanvas.getHeight());
-        gc.setFill(Color.WHITE);
-        double cellW = gameCanvas.getWidth() / 7;
-        double cellH = gameCanvas.getHeight() / 6;
-        for (int r = 0; r < 6; r++) {
-            for (int c = 0; c < 7; c++) {
+    // ---------------- Renderizado ----------------
+    public void initialize() {
+        canvas.setWidth(cols * cellSize);
+        canvas.setHeight(rows * cellSize);
+
+        canvas.setOnMouseMoved(this::handleHover);
+        canvas.setOnMouseClicked(this::handleClick);
+
+        renderLoop = new Timeline(new KeyFrame(Duration.millis(33), e -> draw()));
+        renderLoop.setCycleCount(Timeline.INDEFINITE);
+        renderLoop.play();
+    }
+
+    private void handleHover(MouseEvent e) {
+        mouseX = e.getX();
+        mouseY = e.getY();
+        sendMouse(mouseX, mouseY);
+    }
+
+    private void handleClick(MouseEvent e) {
+        int col = (int)(e.getX() / cellSize);
+        sendPlay(col);
+    }
+
+    private void draw() {
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        gc.setFill(Color.LIGHTBLUE);
+        gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
+
+        // tablero
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
                 gc.setFill(Color.WHITE);
-                gc.fillOval(c * cellW + 5, r * cellH + 5, cellW - 10, cellH - 10);
+                gc.fillOval(c*cellSize+5, r*cellSize+5, cellSize-10, cellSize-10);
             }
         }
-    }
 
-    private void drawBoardFromServer(JSONObject game) {
-        // Redibuja el tablero a partir del JSON
-        drawBoard();
-        GraphicsContext gc = gameCanvas.getGraphicsContext2D();
-        double cellW = gameCanvas.getWidth() / 7;
-        double cellH = gameCanvas.getHeight() / 6;
-        var board = game.getJSONArray("board");
-        for (int r = 0; r < 6; r++) {
-            var row = board.getJSONArray(r);
-            for (int c = 0; c < 7; c++) {
-                String cell = row.getString(c);
-                if (cell.equals("R")) gc.setFill(Color.RED);
-                else if (cell.equals("Y")) gc.setFill(Color.YELLOW);
-                else continue;
-                gc.fillOval(c * cellW + 5, r * cellH + 5, cellW - 10, cellH - 10);
+        if (gameState != null) {
+            JSONArray board = gameState.getJSONArray("board");
+            for (int r = 0; r < rows; r++) {
+                JSONArray row = board.getJSONArray(r);
+                for (int c = 0; c < cols; c++) {
+                    String val = row.getString(c);
+                    if (val.equals("R")) gc.setFill(Color.RED);
+                    else if (val.equals("Y")) gc.setFill(Color.YELLOW);
+                    else continue;
+                    gc.fillOval(c*cellSize+5, r*cellSize+5, cellSize-10, cellSize-10);
+                }
             }
         }
-    }
 
-    public void setConnected(boolean value) {
-        connected = value;
-        lblServerStatus.setText(value ? "Conectado" : "Desconectado");
+        // hover contrincante
+        for (var m : opponentMouse.values()) {
+            gc.setStroke(Color.GRAY);
+            gc.strokeLine(m[0], 0, m[0], canvas.getHeight());
+        }
     }
 }
