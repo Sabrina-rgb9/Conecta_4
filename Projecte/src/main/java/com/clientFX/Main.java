@@ -8,6 +8,8 @@ import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class Main extends Application {
@@ -21,6 +23,8 @@ public class Main extends Application {
     public static CtrlCountdown ctrlCountdown;
     public static CtrlGame ctrlGame;
     public static CtrlResult ctrlResult;
+    
+    public static String playerName = "";
 
     public static void main(String[] args) {
         launch(args);
@@ -110,6 +114,11 @@ public class Main extends Application {
 
             switch (type) {
                 case "clients" -> {
+                    // El primer element de la llista és el nostre nom (segons ClientRegistry)
+                    JSONArray list = msg.getJSONArray("list");
+                    if (list.length() > 0) {
+                        playerName = list.getString(0); // O el que correspongui
+                    }
                     UtilsViews.setView("ViewOpponentSelection");
                     ctrlOpponentSelection.handleMessage(msg);
                 }

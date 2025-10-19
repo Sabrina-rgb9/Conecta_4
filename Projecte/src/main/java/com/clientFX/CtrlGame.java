@@ -97,41 +97,30 @@ public class CtrlGame {
     private void animateDrop(int col, int targetRow) {
         GraphicsContext gc = canvas.getGraphicsContext2D();
         double startX = col * cellSize + cellSize / 2.0;
-        double startY = -cellSize / 2.0; // Comença des de dalt del tauler
+        double startY = -cellSize / 2.0; // Comença des de dalt
         double endY = targetRow * cellSize + cellSize / 2.0;
 
+        // Variable per l'animació
+        double[] currentY = {startY};
+
         Timeline timeline = new Timeline();
-        KeyValue kv = new KeyValue(gc.getCanvas().getGraphicsContext2D().getTransform().getMyy(), endY); // Truc: animem una propietat dummy
-        // En lloc d'això, dibuixarem frame a frame
         timeline.getKeyFrames().add(new KeyFrame(Duration.millis(500), e -> {
-            // L'animació real es fa dins del render loop, però per simplicitat, fem un Timeline simple
+            currentY[0] = endY; // Salt directe (o pots fer interpolació)
+            redraw(); // Redibuixa l'estat final
         }));
 
-        // Solució més simple: Timeline que actualitza una posició temporal
-        double[] animY = {startY};
-        Timeline dropAnim = new Timeline(
-            new KeyFrame(Duration.millis(500), new KeyValue(animY[0], endY))
-        );
-        dropAnim.setOnFinished(e -> {
-            // Assegurem que l'estat final es dibuixa
-            lastMoveRow = targetRow;
-            lastMoveCol = col;
-            redraw();
-        });
-
-        // Render loop temporal per l'animació
-        Timeline renderLoop = new Timeline(new KeyFrame(Duration.millis(16), ev -> {
-            redraw();
-            gc.save();
-            gc.setFill("R".equals(getPieceAt(targetRow, col)) ? Color.RED : Color.YELLOW);
-            double currentY = animY[0];
-            gc.fillOval(startX - cellSize/2 + 5, currentY - cellSize/2 + 5, cellSize - 10, cellSize - 10);
-            gc.restore();
+        // Render loop per l'animació (opcional, per efecte fluid)
+        Timeline renderLoop = new Timeline(new KeyFrame(Duration.millis(16), e -> {
+            gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
+            redraw(); // Dibuixa tauler
+            // Dibuixa fitxa animada
+            String piece = getPieceAt(targetRow, col);
+            gc.setFill("R".equals(piece) ? Color.RED : Color.YELLOW);
+            double y = currentY[0] + (endY - currentY[0]) * Math.min(1, timeline.getCurrentRate()); // Aproximació
+            gc.fillOval(startX - cellSize/2 + 5, y - cellSize/2 + 5, cellSize - 10, cellSize - 10);
         }));
-        renderLoop.setCycleCount(Timeline.INDEFINITE);
-        dropAnim.setOnFinished(e -> renderLoop.stop());
-        renderLoop.play();
-        dropAnim.play();
+        renderLoop.setCycleCount(1);
+        timeline.play();
     }
 
     // ---------------- Renderitzat ----------------

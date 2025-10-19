@@ -25,7 +25,7 @@ public class CtrlOpponentSelection {
         lstAvailablePlayers.setItems(availablePlayers);
         btnInvite.setOnAction(e -> sendInvite());
         lstAvailablePlayers.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
-            btnInvite.setDisable(selected == null || selected.equals(Main.wsClient.getClientName()));
+            btnInvite.setDisable(selected == null || selected.equals(Main.playerName));
         });
         btnInvite.setDisable(true);
     }
@@ -45,7 +45,7 @@ public class CtrlOpponentSelection {
                 availablePlayers.clear();
                 for (int i = 0; i < list.length(); i++) {
                     String player = list.getString(i);
-                    if (!player.equals(Main.wsClient.getClientName())) {
+                    if (!player.equals(Main.playerName)) {
                         availablePlayers.add(player);
                     }
                 }
