@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane xmlns="http://javafx.com/javafx/19"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.clientFX.CtrlWaitingRoom"
+            minWidth="500.0" minHeight="300.0">
+
+    <children>
+        <Label text="Sala d'espera" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0"
+               AnchorPane.topAnchor="20.0" alignment="CENTER">
+            <font>
+                <Font size="28.0"/>
+            </font>
+        </Label>
+
+        <Label text="Jugador:" AnchorPane.leftAnchor="50.0" AnchorPane.topAnchor="100.0"/>
+        <Label fx:id="lblPlayerName" text="---" AnchorPane.leftAnchor="180.0" AnchorPane.topAnchor="100.0"/>
+
+        <Label text="Contrincant:" AnchorPane.leftAnchor="50.0" AnchorPane.topAnchor="140.0"/>
+        <Label fx:id="lblOpponent" text="---" AnchorPane.leftAnchor="180.0" AnchorPane.topAnchor="140.0"/>
+
+        <Label fx:id="lblStatus" text="Esperant contrincant..." 
+               AnchorPane.leftAnchor="50.0" AnchorPane.rightAnchor="50.0"
+               AnchorPane.topAnchor="200.0" alignment="CENTER">
+            <font>
+                <Font size="16.0"/>
+            </font>
+        </Label>
+    </children>
+</AnchorPane>

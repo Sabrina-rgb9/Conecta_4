@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.canvas.Canvas?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane xmlns="http://javafx.com/javafx/19"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.clientFX.CtrlGame"
+            minWidth="700.0" minHeight="600.0">
+
+    <children>
+        <Label text="Connecta 4" 
+               AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0"
+               AnchorPane.topAnchor="10.0" alignment="CENTER">
+            <font>
+                <Font size="32.0"/>
+            </font>
+        </Label>
+
+        <Label fx:id="lblStatus" text="En joc..." 
+               AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="60.0"/>
+
+        <Label text="Torn:" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="90.0"/>
+        <Label fx:id="lblTurn" text="---" 
+               AnchorPane.leftAnchor="80.0" AnchorPane.topAnchor="90.0"/>
+
+        <Canvas fx:id="canvas" 
+                AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="130.0"
+                AnchorPane.rightAnchor="20.0" AnchorPane.bottomAnchor="60.0"/>
+
+        <Label text="Mou el ratolí sobre una columna i fes clic per jugar"
+               AnchorPane.leftAnchor="20.0" AnchorPane.bottomAnchor="20.0"
+               textFill="#555555"/>
+    </children>
+</AnchorPane>

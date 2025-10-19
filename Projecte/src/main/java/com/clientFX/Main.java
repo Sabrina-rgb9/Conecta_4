@@ -1,11 +1,5 @@
 package com.clientFX;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
-
 import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -14,61 +8,71 @@ import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import org.json.JSONObject;
 
 public class Main extends Application {
 
     public static UtilsWS wsClient;
 
-    public static int port = 3000;
-    public static String protocol = "http";
-    public static String host = "localhost";
-    public static String protocolWS = "ws";
-
+    // Controladors de les vistes
     public static CtrlConfig ctrlConfig;
-    public static CtrlSockets ctrlSockets;
+    public static CtrlOpponentSelection ctrlOpponentSelection;
+    public static CtrlWaitingRoom ctrlWaitingRoom;
+    public static CtrlCountdown ctrlCountdown;
+    public static CtrlGame ctrlGame;
+    public static CtrlResult ctrlResult;
 
     public static void main(String[] args) {
-
-        // Iniciar app JavaFX   
         launch(args);
     }
-    
+
     @Override
     public void start(Stage stage) throws Exception {
-
-        final int windowWidth = 400;
-        final int windowHeight = 300;
+        final int windowWidth = 800;
+        final int windowHeight = 600;
 
         UtilsViews.parentContainer.setStyle("-fx-font: 14 arial;");
-        UtilsViews.addView(getClass(), "ViewConfig", "/assets/viewConfig.fxml"); 
-        UtilsViews.addView(getClass(), "ViewSockets", "/assets/viewSockets.fxml");
 
+        // Carregar totes les vistes (ordre determina direcció d'animació)
+        UtilsViews.addView(getClass(), "ViewConfig", "/assets/viewConfig.fxml");
+        UtilsViews.addView(getClass(), "ViewOpponentSelection", "/assets/viewOpponentSelection.fxml");
+        UtilsViews.addView(getClass(), "ViewWaitingRoom", "/assets/viewWaitingRoom.fxml");
+        UtilsViews.addView(getClass(), "ViewCountdown", "/assets/viewCountdown.fxml");
+        UtilsViews.addView(getClass(), "ViewGame", "/assets/viewGame.fxml");
+        UtilsViews.addView(getClass(), "ViewResult", "/assets/viewResult.fxml");
+
+        // Obtenir controladors
         ctrlConfig = (CtrlConfig) UtilsViews.getController("ViewConfig");
-        ctrlSockets = (CtrlSockets) UtilsViews.getController("ViewSockets");
+        ctrlOpponentSelection = (CtrlOpponentSelection) UtilsViews.getController("ViewOpponentSelection");
+        ctrlWaitingRoom = (CtrlWaitingRoom) UtilsViews.getController("ViewWaitingRoom");
+        ctrlCountdown = (CtrlCountdown) UtilsViews.getController("ViewCountdown");
+        ctrlGame = (CtrlGame) UtilsViews.getController("ViewGame");
+        ctrlResult = (CtrlResult) UtilsViews.getController("ViewResult");
 
-        Scene scene = new Scene(UtilsViews.parentContainer);
-        
+        Scene scene = new Scene(UtilsViews.parentContainer, windowWidth, windowHeight);
         stage.setScene(scene);
-        stage.onCloseRequestProperty(); // Call close method when closing window
-        stage.setTitle("JavaFX - NodeJS");
+        stage.setTitle("Connecta 4 - JavaFX");
         stage.setMinWidth(windowWidth);
         stage.setMinHeight(windowHeight);
         stage.show();
 
-        // Add icon only if not Mac
-        if (!System.getProperty("os.name").contains("Mac")) {
-            Image icon = new Image("file:/icons/icon.png");
-            stage.getIcons().add(icon);
+        // Icona (excepte macOS)
+        if (!System.getProperty("os.name").toLowerCase().contains("mac")) {
+            try {
+                Image icon = new Image(getClass().getResourceAsStream("/assets/icon.png"));
+                stage.getIcons().add(icon);
+            } catch (Exception e) {
+                System.out.println("No s'ha trobat l'icona");
+            }
         }
     }
 
-
     @Override
-    public void stop() { 
+    public void stop() {
         if (wsClient != null) {
             wsClient.forceExit();
         }
-        System.exit(1); // Kill all executor services
+        Platform.exit(); // Millor que System.exit() en JavaFX
     }
 
     public static void pauseDuring(long milliseconds, Runnable action) {
@@ -77,52 +81,88 @@ public class Main extends Application {
         pause.play();
     }
 
-    public static <T> List<T> jsonArrayToList(JSONArray array, Class<T> clazz) {
-        List<T> list = new ArrayList<>();
-        for (int i = 0; i < array.length(); i++) {
-            T value = clazz.cast(array.get(i));
-            list.add(value);
-        }
-        return list;
-    }
-
     public static void connectToServer() {
-
         ctrlConfig.txtMessage.setTextFill(Color.BLACK);
-        ctrlConfig.txtMessage.setText("Connecting ...");
-    
-        pauseDuring(1500, () -> { // Give time to show connecting message ...
+        ctrlConfig.txtMessage.setText("Connectant...");
 
-            String protocol = ctrlConfig.txtProtocol.getText();
-            String host = ctrlConfig.txtHost.getText();
-            String port = ctrlConfig.txtPort.getText();
-            wsClient = UtilsWS.getSharedInstance(protocol + "://" + host + ":" + port);
-    
-            wsClient.onMessage((response) -> { Platform.runLater(() -> { wsMessage(response); }); });
-            wsClient.onError((response) -> { Platform.runLater(() -> { wsError(response); }); });
-        });
-    }
-   
-    private static void wsMessage(String response) {
-        Platform.runLater(()->{ 
-            // Fer aquí els canvis a la interficie
-            if (UtilsViews.getActiveView() != "ViewSockets") {
-                UtilsViews.setViewAnimating("ViewSockets");
+        pauseDuring(1000, () -> {
+            String protocol = ctrlConfig.txtProtocol.getText().trim();
+            String host = ctrlConfig.txtHost.getText().trim();
+            String port = ctrlConfig.txtPort.getText().trim();
+
+            if (protocol.isEmpty() || host.isEmpty() || port.isEmpty()) {
+                showError("Tots els camps són obligatoris");
+                return;
             }
-            JSONObject msgObj = new JSONObject(response);
-            ctrlSockets.receiveMessage(msgObj);
+
+            String wsUrl = protocol + "://" + host + ":" + port;
+            wsClient = UtilsWS.getSharedInstance(wsUrl);
+
+            wsClient.onMessage(response -> Platform.runLater(() -> handleWebSocketMessage(response)));
+            wsClient.onError(response -> Platform.runLater(() -> handleWebSocketError(response)));
         });
     }
 
-    private static void wsError(String response) {
+    private static void handleWebSocketMessage(String response) {
+        try {
+            JSONObject msg = new JSONObject(response);
+            String type = msg.getString("type");
 
-        String connectionRefused = "Connection refused";
-        if (response.indexOf(connectionRefused) != -1) {
-            ctrlConfig.txtMessage.setTextFill(Color.RED);
-            ctrlConfig.txtMessage.setText(connectionRefused);
-            pauseDuring(1500, () -> {
-                ctrlConfig.txtMessage.setText("");
-            });
+            switch (type) {
+                case "clients" -> {
+                    UtilsViews.setView("ViewOpponentSelection");
+                    ctrlOpponentSelection.handleMessage(msg);
+                }
+                case "invitationAccepted", "gameStarted" -> {
+                    UtilsViews.setView("ViewWaitingRoom");
+                    ctrlWaitingRoom.handleMessage(msg);
+                }
+                case "countdown" -> {
+                    UtilsViews.setView("ViewCountdown");
+                    ctrlCountdown.handleMessage(msg);
+                }
+                case "serverData" -> {
+                    String status = msg.getJSONObject("game").getString("status");
+                    if ("playing".equals(status) || "win".equals(status) || "draw".equals(status)) {
+                        UtilsViews.setView("ViewGame");
+                        ctrlGame.handleMessage(msg);
+                    }
+                }
+                case "gameResult" -> {
+                    UtilsViews.setView("ViewResult");
+                    ctrlResult.handleMessage(msg);
+                }
+                default -> {
+                    // Passar a la vista actual si no és un canvi d'escena
+                    String currentView = UtilsViews.getActiveView();
+                    switch (currentView) {
+                        case "ViewOpponentSelection" -> ctrlOpponentSelection.handleMessage(msg);
+                        case "ViewWaitingRoom" -> ctrlWaitingRoom.handleMessage(msg);
+                        case "ViewCountdown" -> ctrlCountdown.handleMessage(msg);
+                        case "ViewGame" -> ctrlGame.handleMessage(msg);
+                        case "ViewResult" -> ctrlResult.handleMessage(msg);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error processant missatge: " + response);
+            e.printStackTrace();
         }
+    }
+
+    private static void handleWebSocketError(String response) {
+        String errorMsg = "Error de connexió";
+        if (response != null && response.contains("Connection refused")) {
+            errorMsg = "No es pot connectar al servidor";
+        }
+        showError(errorMsg);
+    }
+
+    private static void showError(String message) {
+        Platform.runLater(() -> {
+            ctrlConfig.txtMessage.setTextFill(Color.RED);
+            ctrlConfig.txtMessage.setText(message);
+            pauseDuring(2000, () -> ctrlConfig.txtMessage.setText(""));
+        });
     }
 }
