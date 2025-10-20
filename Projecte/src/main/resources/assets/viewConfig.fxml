@@ -110,7 +110,7 @@
                   </VBox>
                </children>
             </HBox>
-            <Button mnemonicParsing="false" onAction="#connectToServer" text="Connect" VBox.vgrow="NEVER">
+            <Button mnemonicParsing="false" onAction="#connectToServer" text="Connect"  fx:id="btnConnect" VBox.vgrow="NEVER">
                <VBox.margin>
                   <Insets top="16.0" />
                </VBox.margin>
