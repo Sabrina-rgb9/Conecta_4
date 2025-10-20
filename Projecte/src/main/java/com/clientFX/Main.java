@@ -8,8 +8,6 @@ import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class Main extends Application {
@@ -23,8 +21,6 @@ public class Main extends Application {
     public static CtrlCountdown ctrlCountdown;
     public static CtrlGame ctrlGame;
     public static CtrlResult ctrlResult;
-    
-    public static String playerName = "";
 
     public static void main(String[] args) {
         launch(args);
@@ -37,7 +33,7 @@ public class Main extends Application {
 
         UtilsViews.parentContainer.setStyle("-fx-font: 14 arial;");
 
-        // Carregar totes les vistes (ordre determina direcció d'animació)
+        // Carregar totes les vistes
         UtilsViews.addView(getClass(), "ViewConfig", "/assets/viewConfig.fxml");
         UtilsViews.addView(getClass(), "ViewOpponentSelection", "/assets/viewOpponentSelection.fxml");
         UtilsViews.addView(getClass(), "ViewWaitingRoom", "/assets/viewWaitingRoom.fxml");
@@ -60,7 +56,7 @@ public class Main extends Application {
         stage.setMinHeight(windowHeight);
         stage.show();
 
-        // Icona (excepte macOS)
+        // Icona
         if (!System.getProperty("os.name").toLowerCase().contains("mac")) {
             try {
                 Image icon = new Image(getClass().getResourceAsStream("/assets/icon.png"));
@@ -76,7 +72,7 @@ public class Main extends Application {
         if (wsClient != null) {
             wsClient.forceExit();
         }
-        Platform.exit(); // Millor que System.exit() en JavaFX
+        Platform.exit();
     }
 
     public static void pauseDuring(long milliseconds, Runnable action) {
@@ -132,7 +128,18 @@ public class Main extends Application {
                     ctrlCountdown.handleMessage(msg);
                 }
                 case "serverData" -> {
-                    String status = msg.getJSONObject("game").getString("status");
+                    // >>> AFEGIT: Defineix clientName i role <<<
+                    String myName = getCurrentPlayerName();
+                    msg.put("clientName", myName);
+                    
+                    // Determina el rol basat en playerR/playerY
+                    JSONObject game = msg.getJSONObject("game");
+                    String playerR = game.getString("playerR");
+                    String role = playerR.equals(myName) ? "R" : "Y";
+                    msg.put("role", role);
+                    // <<< FI AFEGIT >>>
+
+                    String status = game.getString("status");
                     if ("playing".equals(status) || "win".equals(status) || "draw".equals(status)) {
                         UtilsViews.setView("ViewGame");
                         ctrlGame.handleMessage(msg);
@@ -154,10 +161,19 @@ public class Main extends Application {
                 }
             }
         } catch (Exception e) {
-            System.err.println("Error processant: " + response);
+            System.err.println("Error processant missatge: " + response);
             e.printStackTrace();
         }
     }
+
+    // >>> AFEGIT: Mètode per obtenir el nom del jugador actual <<<
+    private static String getCurrentPlayerName() {
+        if (ctrlOpponentSelection != null) {
+            return ctrlOpponentSelection.getPlayerName();
+        }
+        return "JugadorDesconegut";
+    }
+    // <<< FI AFEGIT >>>
 
     private static void handleWebSocketError(String response) {
         String errorMsg = "Error de connexió";

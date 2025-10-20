@@ -166,14 +166,26 @@ public class GameSession {
         res.put("type", "serverData");
         res.put("status", status.name().toLowerCase()); // waiting|countdown|playing|win|draw
 
+        // >>> AFEGIT: clientsList al nivell arrel <<<
+        JSONArray clientsList = new JSONArray();
+        JSONObject r = new JSONObject().put("name", playerR).put("role", "R");
+        JSONObject y = new JSONObject().put("name", playerY).put("role", "Y");
+        clientsList.put(r).put(y);
+        res.put("clientsList", clientsList);
+        // <<< FI AFEGIT >>>
+
         JSONObject game = new JSONObject();
         game.put("status", status.name().toLowerCase());
+        // >>> AFEGIT: playerR i playerY dins de "game" <<<
+        game.put("playerR", playerR);
+        game.put("playerY", playerY);
+        // <<< FI AFEGIT >>>
         // board com 6 files on cada fila és array de 7 strings
         JSONArray boardArr = new JSONArray();
-        for (int r = 0; r < 6; r++) {
+        for (int d = 0; d < 6; d++) {
             JSONArray row = new JSONArray();
             for (int c = 0; c < 7; c++) {
-                row.put(Character.toString(board[r][c]));
+                row.put(Character.toString(board[d][c]));
             }
             boardArr.put(row);
         }
@@ -187,13 +199,6 @@ public class GameSession {
         game.put("winner", winner == null ? "" : winner);
 
         res.put("game", game);
-
-        // players list minimal info
-        JSONArray clientsList = new JSONArray();
-        JSONObject r = new JSONObject().put("name", playerR).put("role", "R");
-        JSONObject y = new JSONObject().put("name", playerY).put("role", "Y");
-        clientsList.put(r).put(y);
-        res.put("clientsList", clientsList);
 
         return res;
     }
@@ -236,15 +241,11 @@ public class GameSession {
 
     public boolean isPlayerTurn(String name) { return name.equals(turn); }
 
-    // Afegeix a GameSession.java
+    // >>> AFEGIT: Getter per al guanyador <<<
     public String getWinner() {
         return winner;
     }
-
-    // Afegeix aquest mètode (és nou)
-    // public GameSession getSession(String sessionId) {
-    //     return sessions.get(sessionId);
-    // }
+    // <<< FI AFEGIT >>>
 
     // Getter per debugging
     public JSONObject debugInfo() {

@@ -42,6 +42,8 @@ public class CtrlGame {
     private boolean dragging = false;
     private Color dragColor;
     private int dragColumn = -1;
+    private double mouseX = 0;
+    private double mouseY = 0;
 
     @FXML
     public void initialize() {

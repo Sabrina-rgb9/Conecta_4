@@ -1,5 +1,6 @@
 package com.clientFX;
 
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -18,21 +19,29 @@ public class CtrlOpponentSelection {
     @FXML private Label lblPlayerName;
 
     private ObservableList<String> availablePlayers = FXCollections.observableArrayList();
-    private Map<String, String> pendingInvitations = new HashMap<>(); // origin -> invited
+    private Map<String, String> pendingInvitations = new HashMap<>();
+    private String playerName = ""; // <<< AFEGIT
 
     @FXML
     public void initialize() {
         lstAvailablePlayers.setItems(availablePlayers);
         btnInvite.setOnAction(e -> sendInvite());
         lstAvailablePlayers.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
-            btnInvite.setDisable(selected == null || selected.equals(Main.playerName));
+            btnInvite.setDisable(selected == null || selected.equals(playerName));
         });
         btnInvite.setDisable(true);
     }
 
     public void setPlayerName(String name) {
-        lblPlayerName.setText(name);
+        this.playerName = name; // <<< AFEGIT
+        Platform.runLater(() -> lblPlayerName.setText(name));
     }
+
+    // >>> AFEGIT: Getter per al nom <<<
+    public String getPlayerName() {
+        return playerName;
+    }
+    // <<< FI AFEGIT >>>
 
     /** Processa missatges del servidor */
     public void handleMessage(JSONObject msg) {
@@ -45,7 +54,7 @@ public class CtrlOpponentSelection {
                 availablePlayers.clear();
                 for (int i = 0; i < list.length(); i++) {
                     String player = list.getString(i);
-                    if (!player.equals(Main.playerName)) {
+                    if (!player.equals(playerName)) { // <<< USAM playerName
                         availablePlayers.add(player);
                     }
                 }
