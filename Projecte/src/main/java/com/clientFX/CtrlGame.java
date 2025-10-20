@@ -1,7 +1,6 @@
 package com.clientFX;
 
 import javafx.animation.KeyFrame;
-import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -11,6 +10,7 @@ import javafx.scene.control.Label;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
 import javafx.util.Duration;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -21,11 +21,13 @@ import java.util.Map;
 public class CtrlGame {
 
     @FXML private Canvas canvas;
-    @FXML private Label lblStatus;
-    @FXML private Label lblTurn;
-    @FXML private Pane paneFichas;
-    @FXML private Pane paneRedPieces;
-    @FXML private Pane paneYellowPieces;
+    @FXML private Label lblPlayerName;
+    @FXML private Label lblYourRole;
+    @FXML private Label lblOpponentName;
+    @FXML private Label lblOpponentRole;
+    @FXML private Label lblTurnIndicator;
+    @FXML private Pane paneYourPieces;
+    @FXML private Pane paneOpponentPieces;
 
     private String clientName = "";
     private String role = ""; // "R" o "Y"
@@ -37,129 +39,34 @@ public class CtrlGame {
     private final double cellSize = 80;
     private int lastMoveRow = -1;
     private int lastMoveCol = -1;
-    private String lastWinner = "";
-
-    // Variables para arrastrar fichas
     private boolean dragging = false;
-    private double dragStartX, dragStartY;
-    private Color dragPieceColor;
+    private Color dragColor;
     private int dragColumn = -1;
-    private Timeline dropAnimation;
 
     @FXML
     public void initialize() {
-        // Configurar tamaño del canvas
         canvas.setWidth(cols * cellSize);
         canvas.setHeight(rows * cellSize);
-
-        // Eventos del canvas
         canvas.setOnMouseMoved(this::handleHover);
         canvas.setOnMouseClicked(this::handleClick);
-        canvas.setOnMousePressed(this::handleDragStart);
-        canvas.setOnMouseReleased(this::handleDragEnd);
-
-        // Inicializar paneles de fichas
-        initPiecePanels();
-
-        // Redibujar cada vez que cambie el tamaño
         canvas.widthProperty().addListener((obs, old, newVal) -> redraw());
         canvas.heightProperty().addListener((obs, old, newVal) -> redraw());
-    }
-
-    private void initPiecePanels() {
-        // Crear 5 fichas rojas y 5 amarillas (aleatorias)
-        for (int i = 0; i < 5; i++) {
-            createDraggablePiece(paneRedPieces, Color.RED);
-            createDraggablePiece(paneYellowPieces, Color.YELLOW);
-        }
-    }
-
-    private void createDraggablePiece(Pane parent, Color color) {
-        double pieceSize = 30;
-        javafx.scene.shape.Circle piece = new javafx.scene.shape.Circle(pieceSize / 2);
-        piece.setFill(color);
-        piece.setStroke(Color.BLACK);
-        piece.setStrokeWidth(1);
-
-        // Hacerla arrastrable
-        piece.setOnMousePressed(e -> {
-            if (clientName.equals(gameState.getString("turn"))) {
-                dragging = true;
-                dragStartX = e.getSceneX();
-                dragStartY = e.getSceneY();
-                dragPieceColor = color;
-                // Mover la pieza al canvas (temporalmente)
-                parent.getChildren().remove(piece);
-                canvas.getParent().getChildrenUnmodifiable().add(piece);
-                piece.setTranslateX(dragStartX - canvas.getLayoutX() - pieceSize / 2);
-                piece.setTranslateY(dragStartY - canvas.getLayoutY() - pieceSize / 2);
-            }
-        });
-
-        piece.setOnMouseDragged(e -> {
-            if (dragging && dragPieceColor == color) {
-                double dx = e.getSceneX() - dragStartX;
-                double dy = e.getSceneY() - dragStartY;
-                piece.setTranslateX(piece.getTranslateX() + dx);
-                piece.setTranslateY(piece.getTranslateY() + dy);
-                dragStartX = e.getSceneX();
-                dragStartY = e.getSceneY();
-
-                // Calcular columna bajo el mouse
-                double cx = piece.getTranslateX() + pieceSize / 2;
-                int col = (int) (cx / cellSize);
-                if (col >= 0 && col < cols) {
-                    dragColumn = col;
-                } else {
-                    dragColumn = -1;
-                }
-                redraw(); // Para resaltar la columna
-            }
-        });
-
-        parent.getChildren().add(piece);
-    }
-
-    private void handleDragStart(MouseEvent e) {
-        // No hacer nada aquí, ya se maneja en las fichas
-    }
-
-    private void handleDragEnd(MouseEvent e) {
-        if (dragging) {
-            dragging = false;
-            // Si estamos sobre una columna válida, enviar jugada
-            if (dragColumn >= 0 && dragColumn < cols) {
-                sendPlay(dragColumn);
-            }
-            // Devolver la ficha al panel
-            javafx.scene.shape.Circle piece = (javafx.scene.shape.Circle) canvas.getParent().getChildrenUnmodifiable().get(canvas.getParent().getChildrenUnmodifiable().size() - 1);
-            canvas.getParent().getChildrenUnmodifiable().remove(piece);
-            if (dragPieceColor == Color.RED) {
-                paneRedPieces.getChildren().add(piece);
-            } else {
-                paneYellowPieces.getChildren().add(piece);
-            }
-            dragColumn = -1;
-            redraw();
-        }
     }
 
     private void handleHover(MouseEvent e) {
         mouseX = e.getX();
         mouseY = e.getY();
         sendMouse(mouseX, mouseY);
-
-        // Redibujar para resaltar la columna bajo el mouse
         redraw();
     }
 
     private void handleClick(MouseEvent e) {
-        // Solo si es nuestro turno y no estamos arrastrando
-        if (!dragging && gameState != null && clientName.equals(gameState.getString("turn"))) {
-            int col = (int) (e.getX() / cellSize);
-            if (col >= 0 && col < cols) {
-                sendPlay(col);
-            }
+        if (gameState == null || Main.wsClient == null) return;
+        if (!clientName.equals(gameState.getString("turn"))) return;
+
+        int col = (int) (e.getX() / cellSize);
+        if (col >= 0 && col < cols) {
+            sendPlay(col);
         }
     }
 
@@ -187,45 +94,49 @@ public class CtrlGame {
                 role = msg.getString("role");
                 gameState = msg.getJSONObject("game");
 
-                // Actualizar etiquetas
-                String turn = gameState.getString("turn");
-                lblTurn.setText(turn);
-                String status = gameState.getString("status");
-                if ("win".equals(status)) {
-                    String winner = gameState.getString("winner");
-                    lblStatus.setText(winner.equals(clientName) ? "Has guanyat!" : "Has perdut :(");
-                    lastWinner = winner;
-                } else if ("draw".equals(status)) {
-                    lblStatus.setText("Empat!");
-                } else {
-                    lblStatus.setText("En joc...");
-                }
-
-                // Comprobar si hay una nueva jugada para animar
-                if (gameState.has("lastMove") && !gameState.isNull("lastMove")) {
-                    JSONObject lastMove = gameState.getJSONObject("lastMove");
-                    int newRow = lastMove.getInt("row");
-                    int newCol = lastMove.getInt("col");
-                    if (newRow != lastMoveRow || newCol != lastMoveCol) {
-                        lastMoveRow = newRow;
-                        lastMoveCol = newCol;
-                        animateDrop(newCol, newRow);
+                // Extraer oponente
+                JSONArray clients = msg.getJSONArray("clientsList");
+                String opponentName = "---";
+                for (int i = 0; i < clients.length(); i++) {
+                    JSONObject p = clients.getJSONObject(i);
+                    if (!p.getString("name").equals(clientName)) {
+                        opponentName = p.getString("name");
+                        break;
                     }
                 }
 
-                // Desactivar interacción si no es tu turno
-                boolean myTurn = clientName.equals(turn);
-                canvas.setDisable(!myTurn);
+                // Actualizar UI
+                lblPlayerName.setText(clientName);
+                lblYourRole.setText("(" + role + ")");
+                lblYourRole.setStyle("-fx-text-fill: " + ("R".equals(role) ? "red" : "yellow") + ";");
+
+                lblOpponentName.setText(opponentName);
+                String oppRole = "R".equals(role) ? "Y" : "R";
+                lblOpponentRole.setText("(" + oppRole + ")");
+                lblOpponentRole.setStyle("-fx-text-fill: " + ("R".equals(oppRole) ? "red" : "yellow") + ";");
+
+                // Turno
+                boolean myTurn = clientName.equals(gameState.getString("turn"));
                 if (myTurn) {
-                    lblTurn.setText("Et toca jugar");
-                    lblTurn.setStyle("-fx-text-fill: green; -fx-font-weight: bold;");
+                    lblTurnIndicator.setText("Et toca jugar");
+                    lblTurnIndicator.setStyle("-fx-text-fill: green; -fx-font-weight: bold; -fx-font-style: normal;");
                 } else {
-                    lblTurn.setText("Esperant...");
-                    lblTurn.setStyle("-fx-text-fill: gray; -fx-font-style: italic;");
+                    lblTurnIndicator.setText("Esperant...");
+                    lblTurnIndicator.setStyle("-fx-text-fill: gray; -fx-font-style: italic; -fx-font-weight: normal;");
                 }
 
-                // Actualizar el panel de fichas según el rol
-                updatePiecePanels();
+                // Animar última jugada
+                if (gameState.has("lastMove") && !gameState.isNull("lastMove")) {
+                    JSONObject lm = gameState.getJSONObject("lastMove");
+                    int r = lm.getInt("row");
+                    int c = lm.getInt("col");
+                    if (r != lastMoveRow || c != lastMoveCol) {
+                        lastMoveRow = r;
+                        lastMoveCol = c;
+                        animateDrop(c, r);
+                        return;
+                    }
+                }
 
                 redraw();
             });
@@ -240,88 +151,67 @@ public class CtrlGame {
         }
     }
 
-    private void updatePiecePanels() {
-        // Limpiar paneles
-        paneRedPieces.getChildren().clear();
-        paneYellowPieces.getChildren().clear();
-
-        // Re-crear fichas según el rol
-        for (int i = 0; i < 5; i++) {
-            if ("R".equals(role)) {
-                createDraggablePiece(paneRedPieces, Color.RED);
-                createDraggablePiece(paneYellowPieces, Color.YELLOW);
-            } else {
-                createDraggablePiece(paneRedPieces, Color.RED);
-                createDraggablePiece(paneYellowPieces, Color.YELLOW);
-            }
-        }
-    }
-
     private void animateDrop(int col, int targetRow) {
-        if (dropAnimation != null) {
-            dropAnimation.stop();
-        }
-
         GraphicsContext gc = canvas.getGraphicsContext2D();
         double startX = col * cellSize + cellSize / 2.0;
-        double startY = -cellSize / 2.0; // Comienza desde arriba
+        double startY = -cellSize / 2.0;
         double endY = targetRow * cellSize + cellSize / 2.0;
-
-        // Variable para la animación
         double[] currentY = {startY};
 
-        dropAnimation = new Timeline(
-            new KeyFrame(Duration.millis(500), e -> {
-                currentY[0] = endY;
-                redraw(); // Redibuja el estado final
-            })
-        );
-
-        // Render loop para efecto fluido (opcional)
         Timeline renderLoop = new Timeline(
             new KeyFrame(Duration.millis(16), e -> {
                 gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
-                redraw(); // Dibuja tablero y fichas
-                // Dibuja ficha animada
+                redraw();
                 String piece = getPieceAt(targetRow, col);
                 Color color = "R".equals(piece) ? Color.RED : Color.YELLOW;
                 gc.setFill(color);
-                double y = currentY[0];
-                gc.fillOval(startX - cellSize/2 + 5, y - cellSize/2 + 5, cellSize - 10, cellSize - 10);
+                gc.fillOval(startX - cellSize/2 + 5, currentY[0] - cellSize/2 + 5, cellSize - 10, cellSize - 10);
+                if (currentY[0] < endY) {
+                    currentY[0] += 8;
+                    if (currentY[0] > endY) currentY[0] = endY;
+                }
             })
         );
-        renderLoop.setCycleCount(1);
-        dropAnimation.play();
+        renderLoop.setCycleCount(Timeline.INDEFINITE);
+
+        Timeline stopper = new Timeline(new KeyFrame(Duration.millis(600), e -> {
+            renderLoop.stop();
+            redraw();
+        }));
+        stopper.play();
+        renderLoop.play();
     }
 
     private void redraw() {
         GraphicsContext gc = canvas.getGraphicsContext2D();
         gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
-        // Fondo
+        // Fondo tablero
         gc.setFill(Color.LIGHTBLUE);
         gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
-        // Dibujar tablero (cel·las vacías)
-        for (int r = 0; r < rows; r++) {
-            for (int c = 0; c < cols; c++) {
-                // Resaltar columna bajo el mouse (local)
-                if (c == dragColumn && dragging) {
-                    gc.setFill(Color.rgb(255, 255, 0, 0.3)); // Amarillo suave
+        // Dibujar tablero
+        for (int c = 0; c < cols; c++) {
+            // Hover local
+            if (gameState != null && clientName.equals(gameState.getString("turn"))) {
+                int hoverCol = (int) (mouseX / cellSize);
+                if (hoverCol == c) {
+                    gc.setFill(Color.rgb(255, 255, 0, 0.2));
                     gc.fillRect(c * cellSize, 0, cellSize, canvas.getHeight());
                 }
+            }
 
-                // Resaltar columna bajo el mouse del oponente
-                for (double[] pos : opponentMouse.values()) {
-                    int colUnderOpponent = (int) (pos[0] / cellSize);
-                    if (c == colUnderOpponent) {
-                        gc.setStroke(Color.GRAY);
-                        gc.setLineWidth(2);
-                        gc.strokeRect(c * cellSize, 0, cellSize, canvas.getHeight());
-                    }
+            // Hover remoto
+            for (double[] pos : opponentMouse.values()) {
+                int colOpp = (int) (pos[0] / cellSize);
+                if (colOpp == c) {
+                    gc.setStroke(Color.GRAY);
+                    gc.setLineWidth(2);
+                    gc.strokeRect(c * cellSize, 0, cellSize, canvas.getHeight());
                 }
+            }
 
-                // Cel·la vacía
+            for (int r = 0; r < rows; r++) {
                 gc.setStroke(Color.GRAY);
                 gc.setFill(Color.WHITE);
                 gc.fillOval(c * cellSize + 5, r * cellSize + 5, cellSize - 10, cellSize - 10);
@@ -329,7 +219,7 @@ public class CtrlGame {
             }
         }
 
-        // Dibujar fichas del tablero
+        // Fichas jugadas
         if (gameState != null) {
             JSONArray board = gameState.getJSONArray("board");
             for (int r = 0; r < rows; r++) {
@@ -340,16 +230,12 @@ public class CtrlGame {
                         gc.setFill(Color.RED);
                     } else if ("Y".equals(val)) {
                         gc.setFill(Color.YELLOW);
-                    } else {
-                        continue;
-                    }
+                    } else continue;
 
-                    // Verificar si es parte de la victoria
                     if (isWinningCell(r, c)) {
-                        gc.setGlobalAlpha(0.7);
+                        gc.setGlobalAlpha(0.8);
                         gc.fillOval(c * cellSize + 5, r * cellSize + 5, cellSize - 10, cellSize - 10);
                         gc.setGlobalAlpha(1.0);
-                        // Efecto de iluminación
                         gc.setStroke(Color.WHITE);
                         gc.setLineWidth(3);
                         gc.strokeOval(c * cellSize + 5, r * cellSize + 5, cellSize - 10, cellSize - 10);
@@ -361,25 +247,77 @@ public class CtrlGame {
             }
         }
 
-        // Punter del contrincant (línea vertical)
+        // Punter remoto
         for (double[] pos : opponentMouse.values()) {
             gc.setStroke(Color.GRAY);
-            gc.setLineWidth(2);
-            gc.strokeLine(pos[0], 0, pos[0], canvas.getHeight());
             gc.setLineWidth(1);
+            gc.setLineDashes(5);
+            gc.strokeLine(pos[0], 0, pos[0], canvas.getHeight());
+            gc.setLineDashes(null);
+        }
+
+        // === DIBUJAR FICHAS DISPONIBLES EN LOS PANELES ===
+        drawAvailablePieces();
+    }
+
+    private void drawAvailablePieces() {
+        // Limpiar
+        paneYourPieces.getChildren().clear();
+        paneOpponentPieces.getChildren().clear();
+
+        // Solo dibujar si hay datos
+        if (gameState == null) return;
+
+        // Contar fichas jugadas
+        int redPlayed = 0, yellowPlayed = 0;
+        JSONArray board = gameState.getJSONArray("board");
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                String v = board.getJSONArray(r).getString(c);
+                if ("R".equals(v)) redPlayed++;
+                else if ("Y".equals(v)) yellowPlayed++;
+            }
+        }
+
+        int yourRemaining = 21 - ("R".equals(role) ? redPlayed : yellowPlayed);
+        int oppRemaining = 21 - ("R".equals(role) ? yellowPlayed : redPlayed);
+
+        // Dibujar tus fichas
+        drawPiecesInPane(paneYourPieces, "R".equals(role) ? Color.RED : Color.YELLOW, yourRemaining);
+        // Dibujar fichas del oponente (grisadas)
+        drawPiecesInPane(paneOpponentPieces, "R".equals(role) ? Color.YELLOW : Color.RED, oppRemaining, true);
+    }
+
+    private void drawPiecesInPane(Pane pane, Color color, int count) {
+        drawPiecesInPane(pane, color, count, false);
+    }
+
+    private void drawPiecesInPane(Pane pane, Color color, int count, boolean disabled) {
+        double size = 30;
+        double margin = 5;
+        double cols = 4;
+        for (int i = 0; i < count; i++) {
+            Circle c = new Circle(size / 2);
+            c.setFill(disabled ? Color.LIGHTGRAY : color);
+            c.setStroke(Color.BLACK);
+            c.setStrokeWidth(0.5);
+
+            // Posicionamiento con setLayoutX/Y (funciona mejor en Pane)
+            double x = margin + (i % cols) * (size + margin);
+            double y = margin + (i / cols) * (size + margin);
+            c.setLayoutX(x);
+            c.setLayoutY(y);
+
+            pane.getChildren().add(c);
         }
     }
 
     private String getPieceAt(int row, int col) {
         if (gameState == null) return " ";
-        JSONArray board = gameState.getJSONArray("board");
-        return board.getJSONArray(row).getString(col);
+        return gameState.getJSONArray("board").getJSONArray(row).getString(col);
     }
 
     private boolean isWinningCell(int row, int col) {
-        if (!"win".equals(gameState.getString("status"))) return false;
-        // En un entorno real, el servidor debería enviar las coordenadas ganadoras
-        // Por simplicidad, asumimos que cualquier celda con pieza en estado "win" es ganadora
-        return true;
+        return "win".equals(gameState.getString("status"));
     }
 }
