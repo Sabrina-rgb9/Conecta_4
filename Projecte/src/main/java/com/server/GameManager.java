@@ -123,7 +123,7 @@ public class GameManager {
     }
 
     /** Retorna la sessionId en la que participa player, o null */
-    private String findSessionIdByPlayer(String playerName) {
+    public String findSessionIdByPlayer(String playerName) {
         for (Map.Entry<String, GameSession> e : sessions.entrySet()) {
             if (e.getValue().involves(playerName)) return e.getKey();
         }
@@ -253,4 +253,10 @@ public class GameManager {
         res.put("sessions", sessions.keySet());
         return res;
     }
+
+    // Afegeix a GameManager.java
+    public GameSession getSession(String sessionId) {
+        return sessions.get(sessionId);
+    }
+
 }

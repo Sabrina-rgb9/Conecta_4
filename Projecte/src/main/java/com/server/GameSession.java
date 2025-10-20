@@ -236,6 +236,7 @@ public class GameSession {
 
     public boolean isPlayerTurn(String name) { return name.equals(turn); }
 
+    // Afegeix a GameSession.java
     public String getWinner() {
         return winner;
     }
