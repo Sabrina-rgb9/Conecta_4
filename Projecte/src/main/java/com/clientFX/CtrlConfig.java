@@ -7,6 +7,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Button;
 
 public class CtrlConfig implements Initializable {
 
@@ -22,6 +23,9 @@ public class CtrlConfig implements Initializable {
     @FXML
     public Label txtMessage;
 
+    @FXML 
+    private Button btnConnect;
+
     @Override
     public void initialize(URL url, ResourceBundle rb) {
     }
@@ -29,6 +33,7 @@ public class CtrlConfig implements Initializable {
     @FXML
     private void connectToServer() {
         Main.connectToServer();
+        
     }
 
     @FXML
