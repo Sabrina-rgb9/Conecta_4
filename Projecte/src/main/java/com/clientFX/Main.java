@@ -114,11 +114,12 @@ public class Main extends Application {
 
             switch (type) {
                 case "clients" -> {
-                    // El primer element de la llista és el nostre nom (segons ClientRegistry)
-                    JSONArray list = msg.getJSONArray("list");
-                    if (list.length() > 0) {
-                        playerName = list.getString(0); // O el que correspongui
-                    }
+                    String myName = msg.getString("id");
+                    Platform.runLater(() -> {
+                        ctrlOpponentSelection.setPlayerName(myName);
+                        ctrlWaitingRoom.setPlayerName(myName);
+                        ctrlResult.setPlayerName(myName);
+                    });
                     UtilsViews.setView("ViewOpponentSelection");
                     ctrlOpponentSelection.handleMessage(msg);
                 }
@@ -142,7 +143,6 @@ public class Main extends Application {
                     ctrlResult.handleMessage(msg);
                 }
                 default -> {
-                    // Passar a la vista actual si no és un canvi d'escena
                     String currentView = UtilsViews.getActiveView();
                     switch (currentView) {
                         case "ViewOpponentSelection" -> ctrlOpponentSelection.handleMessage(msg);
@@ -154,7 +154,7 @@ public class Main extends Application {
                 }
             }
         } catch (Exception e) {
-            System.err.println("Error processant missatge: " + response);
+            System.err.println("Error processant: " + response);
             e.printStackTrace();
         }
     }

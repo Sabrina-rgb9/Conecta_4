@@ -241,6 +241,11 @@ public class GameSession {
         return winner;
     }
 
+    // Afegeix aquest mètode (és nou)
+    // public GameSession getSession(String sessionId) {
+    //     return sessions.get(sessionId);
+    // }
+
     // Getter per debugging
     public JSONObject debugInfo() {
         JSONObject d = new JSONObject();

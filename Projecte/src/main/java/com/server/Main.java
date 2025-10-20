@@ -9,10 +9,6 @@ import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Servidor principal de Connecta 4.
- * Gestiona connexions WebSocket i orquestra el joc mitjançant GameManager.
- */
 public class Main extends WebSocketServer {
 
     private final ClientRegistry clients;
@@ -125,7 +121,7 @@ public class Main extends WebSocketServer {
     public static void main(String[] args) {
         int port = 3000;
         List<String> names = Arrays.asList(
-            "Jugador 1", "Jugador 2"
+            "Mario", "Luigi", "Peach", "Toad", "Bowser", "Wario", "Zelda", "Link"
         );
         new Main(new InetSocketAddress(port), names).start();
     }
