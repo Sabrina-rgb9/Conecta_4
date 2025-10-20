@@ -218,6 +218,10 @@ public class CtrlGame {
                 canvas.setDisable(!myTurn);
                 if (myTurn) {
                     lblTurn.setText("Et toca jugar");
+                    lblTurn.setStyle("-fx-text-fill: green; -fx-font-weight: bold;");
+                } else {
+                    lblTurn.setText("Esperant...");
+                    lblTurn.setStyle("-fx-text-fill: gray; -fx-font-style: italic;");
                 }
 
                 // Actualizar el panel de fichas según el rol
