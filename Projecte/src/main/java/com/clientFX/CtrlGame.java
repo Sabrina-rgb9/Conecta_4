@@ -10,7 +10,6 @@ import javafx.scene.control.Label;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
 import javafx.util.Duration;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -39,16 +38,16 @@ public class CtrlGame {
     private final double cellSize = 80;
     private int lastMoveRow = -1;
     private int lastMoveCol = -1;
-    private boolean dragging = false;
-    private Color dragColor;
-    private int dragColumn = -1;
+    private Timeline dropAnimation;
 
     @FXML
     public void initialize() {
         canvas.setWidth(cols * cellSize);
         canvas.setHeight(rows * cellSize);
+
         canvas.setOnMouseMoved(this::handleHover);
         canvas.setOnMouseClicked(this::handleClick);
+
         canvas.widthProperty().addListener((obs, old, newVal) -> redraw());
         canvas.heightProperty().addListener((obs, old, newVal) -> redraw());
     }
@@ -265,7 +264,6 @@ public class CtrlGame {
         paneYourPieces.getChildren().clear();
         paneOpponentPieces.getChildren().clear();
 
-        // Solo dibujar si hay datos
         if (gameState == null) return;
 
         // Contar fichas jugadas
@@ -283,28 +281,26 @@ public class CtrlGame {
         int oppRemaining = 21 - ("R".equals(role) ? yellowPlayed : redPlayed);
 
         // Dibujar tus fichas
-        drawPiecesInPane(paneYourPieces, "R".equals(role) ? Color.RED : Color.YELLOW, yourRemaining);
-        // Dibujar fichas del oponente (grisadas)
-        drawPiecesInPane(paneOpponentPieces, "R".equals(role) ? Color.YELLOW : Color.RED, oppRemaining, true);
+        drawFichas(paneYourPieces, "R".equals(role) ? Color.RED : Color.YELLOW, yourRemaining, false);
+        // Dibujar fichas del rival (grisadas)
+        drawFichas(paneOpponentPieces, "R".equals(role) ? Color.YELLOW : Color.RED, oppRemaining, true);
     }
 
-    private void drawPiecesInPane(Pane pane, Color color, int count) {
-        drawPiecesInPane(pane, color, count, false);
-    }
-
-    private void drawPiecesInPane(Pane pane, Color color, int count, boolean disabled) {
+    private void drawFichas(Pane pane, Color color, int count, boolean disabled) {
         double size = 30;
         double margin = 5;
-        double cols = 4;
+        int cols = 4; // 4 fichas por fila
+
         for (int i = 0; i < count; i++) {
-            Circle c = new Circle(size / 2);
+            javafx.scene.shape.Circle c = new javafx.scene.shape.Circle(size / 2);
             c.setFill(disabled ? Color.LIGHTGRAY : color);
             c.setStroke(Color.BLACK);
-            c.setStrokeWidth(0.5);
+            c.setStrokeWidth(1);
 
-            // Posicionamiento con setLayoutX/Y (funciona mejor en Pane)
             double x = margin + (i % cols) * (size + margin);
             double y = margin + (i / cols) * (size + margin);
+
+            // ✅ Usa setLayoutX/Y (no translate)
             c.setLayoutX(x);
             c.setLayoutY(y);
 
