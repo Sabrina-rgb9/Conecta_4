@@ -28,18 +28,13 @@ public class CtrlResult {
 
     public void handleMessage(JSONObject msg) {
         if ("gameResult".equals(msg.getString("type"))) {
-            String result = msg.getString("result"); // "win", "lose", "draw"
-            String winner = msg.optString("winner", "");
-
+            String result = msg.getString("result");
             Platform.runLater(() -> {
-                if ("win".equals(result)) {
-                    lblResult.setText("Has guanyat!");
-                } else if ("lose".equals(result)) {
-                    lblResult.setText("Has perdut :(");
-                } else if ("draw".equals(result)) {
-                    lblResult.setText("Empat!");
-                } else {
-                    lblResult.setText("Partida finalitzada");
+                switch (result) {
+                    case "win" -> lblResult.setText("Has ganado!");
+                    case "lose" -> lblResult.setText("Has perdido :(");
+                    case "draw" -> lblResult.setText("Empate!");
+                    default -> lblResult.setText("Partida finalizada");
                 }
             });
         }

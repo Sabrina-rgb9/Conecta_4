@@ -18,7 +18,7 @@ public class CtrlWaitingRoom {
 
     @FXML
     public void initialize() {
-        lblStatus.setText("Esperant contrincant...");
+        lblStatus.setText("Esperando contrincante...");
         lblOpponent.setText("---");
     }
 
@@ -37,22 +37,18 @@ public class CtrlWaitingRoom {
 
         switch (type) {
             case "gameStarted" -> {
-                // El servidor confirma que la partida ha començat
                 setOpponentName(msg.getString("opponent"));
-                lblStatus.setText("Partida iniciada! Preparant compte enrere...");
-                // Canviar automàticament al compte enrere després d'1 segon
+                lblStatus.setText("Partida iniciada! Preparando cuenta regresiva...");
                 pauseThenSwitchToCountdown();
             }
             case "countdown" -> {
-                // Si rebem directament un countdown, anem-hi
                 UtilsViews.setView("ViewCountdown");
                 Main.ctrlCountdown.handleMessage(msg);
             }
             case "opponentDisconnected" -> {
                 String opponent = msg.getString("name");
-                lblStatus.setText("El contrincant " + opponent + " s'ha desconnectat.");
-                lblOpponent.setText("(desconnectat)");
-                // Tornar a selecció després de 3 segons
+                lblStatus.setText("El contrincante " + opponent + " se ha desconectado.");
+                lblOpponent.setText("(desconectado)");
                 PauseTransition pause = new PauseTransition(Duration.seconds(3));
                 pause.setOnFinished(e -> Platform.runLater(() -> UtilsViews.setView("ViewOpponentSelection")));
                 pause.play();
@@ -64,7 +60,6 @@ public class CtrlWaitingRoom {
         PauseTransition pause = new PauseTransition(Duration.seconds(1));
         pause.setOnFinished(e -> Platform.runLater(() -> {
             UtilsViews.setView("ViewCountdown");
-            // Enviar senyal per iniciar el countdown (si cal)
             JSONObject readyMsg = new JSONObject();
             readyMsg.put("type", "clientReady");
             Main.wsClient.safeSend(readyMsg.toString());

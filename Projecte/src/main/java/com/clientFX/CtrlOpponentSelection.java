@@ -20,67 +20,61 @@ public class CtrlOpponentSelection {
 
     private ObservableList<String> availablePlayers = FXCollections.observableArrayList();
     private Map<String, String> pendingInvitations = new HashMap<>();
-    private String playerName = ""; // <<< AFEGIT
+    private String playerName = "";
 
     @FXML
     public void initialize() {
         lstAvailablePlayers.setItems(availablePlayers);
+
         btnInvite.setOnAction(e -> sendInvite());
+
         lstAvailablePlayers.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
             btnInvite.setDisable(selected == null || selected.equals(playerName));
         });
+
         btnInvite.setDisable(true);
     }
 
     public void setPlayerName(String name) {
-        this.playerName = name; // <<< AFEGIT
+        this.playerName = name;
         Platform.runLater(() -> lblPlayerName.setText(name));
     }
 
-    // >>> AFEGIT: Getter per al nom <<<
     public String getPlayerName() {
         return playerName;
     }
-    // <<< FI AFEGIT >>>
 
-    /** Processa missatges del servidor */
     public void handleMessage(JSONObject msg) {
         String type = msg.getString("type");
 
         switch (type) {
             case "clients" -> {
-                // Actualitza la llista de jugadors disponibles
                 JSONArray list = msg.getJSONArray("list");
                 availablePlayers.clear();
                 for (int i = 0; i < list.length(); i++) {
                     String player = list.getString(i);
-                    if (!player.equals(playerName)) { // <<< USAM playerName
+                    if (!player.equals(playerName)) {
                         availablePlayers.add(player);
                     }
                 }
             }
             case "invite" -> {
-                // Rebre invitació
                 String origin = msg.getString("origin");
-                Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-                alert.setTitle("Invitació");
-                alert.setHeaderText("Invitació de " + origin);
-                alert.setContentText("Vols acceptar la partida?");
-                if (alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
-                    // Enviar acceptació
-                    JSONObject acceptMsg = new JSONObject();
-                    acceptMsg.put("type", "acceptInvite");
-                    acceptMsg.put("origin", origin);
-                    Main.wsClient.safeSend(acceptMsg.toString());
-                }
+                Platform.runLater(() -> {
+                    Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                    alert.setTitle("Invitación");
+                    alert.setHeaderText("Invitación de " + origin);
+                    alert.setContentText("¿Deseas aceptar la partida?");
+                    if (alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
+                        JSONObject acceptMsg = new JSONObject();
+                        acceptMsg.put("type", "acceptInvite");
+                        acceptMsg.put("origin", origin);
+                        Main.wsClient.safeSend(acceptMsg.toString());
+                    }
+                });
             }
-            case "invitationSent" -> {
-                lblStatus.setText("Invitació enviada a " + msg.getString("dest"));
-            }
-            case "invitationAccepted" -> {
-                // Canviar a vista de sala d'espera
-                UtilsViews.setView("ViewWaitingRoom");
-            }
+            case "invitationSent" -> lblStatus.setText("Invitación enviada a " + msg.getString("dest"));
+            case "invitationAccepted" -> UtilsViews.setView("ViewWaitingRoom");
         }
     }
 

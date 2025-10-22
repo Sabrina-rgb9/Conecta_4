@@ -4,10 +4,12 @@ import org.java_websocket.WebSocket;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Registre de clients connectats.
- * Manté la correspondència entre WebSocket i nom de jugador.
+ * Manté la correspondència entre WebSocket i nom de jugador,
+ * amb reutilització automàtica de noms quan es desconnecten.
  */
 public class ClientRegistry {
 
@@ -15,48 +17,51 @@ public class ClientRegistry {
     private final Map<WebSocket, String> socketToName = new ConcurrentHashMap<>();
     // nom -> socket
     private final Map<String, WebSocket> nameToSocket = new ConcurrentHashMap<>();
-    // Llista inicial de noms disponibles (per assignació automàtica)
-    private final Queue<String> availableNames;
+    // Cua concurrent de noms disponibles per reutilitzar
+    private final Queue<String> availableNames = new ConcurrentLinkedQueue<>();
+    // Llista original de noms per reiniciar el pool si cal
+    private final List<String> seedNames;
 
     public ClientRegistry(List<String> initialNames) {
-        this.availableNames = new LinkedList<>(initialNames);
+        this.seedNames = new ArrayList<>(initialNames);
+        this.availableNames.addAll(initialNames);
     }
 
     /**
      * Afegeix un nou client i li assigna un nom disponible.
+     * Si no n'hi ha, reinicia el pool amb els noms inicials.
      * @return el nom assignat
      */
-    public synchronized String add(WebSocket conn) {
-        if (availableNames.isEmpty()) {
-            // Si no queden noms, genera un genèric
-            int id = socketToName.size() + 1;
-            String genericName = "Jugador" + id;
-            socketToName.put(conn, genericName);
-            nameToSocket.put(genericName, conn);
-            return genericName;
-        } else {
-            String name = availableNames.poll(); // agafa el primer nom disponible
-            socketToName.put(conn, name);
-            nameToSocket.put(name, conn);
-            return name;
+    public String add(WebSocket conn) {
+        String name = availableNames.poll();
+        if (name == null) {
+            // Reinicia el pool amb els noms originals (thread-safe perquè és local)
+            synchronized (this) {
+                if (availableNames.isEmpty()) {
+                    availableNames.addAll(seedNames);
+                }
+                name = availableNames.poll();
+            }
         }
+        socketToName.put(conn, name);
+        nameToSocket.put(name, conn);
+        return name;
     }
 
     /**
-     * Elimina un client i torna el seu nom a la llista (opcional).
+     * Elimina un client i torna el seu nom al pool per reutilitzar-lo.
      * @return el nom del client eliminat, o null si no existia
      */
-    public synchronized String remove(WebSocket conn) {
+    public String remove(WebSocket conn) {
         String name = socketToName.remove(conn);
         if (name != null) {
             nameToSocket.remove(name);
-            // Opcional: tornar a afegir el nom a la llista per reutilitzar-lo
-            // availableNames.offer(name);
+            availableNames.offer(name); // 🔁 ¡Reutilización activada!
         }
         return name;
     }
 
-    /** Netegen un socket desconnectat (mateix que remove, però sense tornar el nom) */
+    /** Neteja un socket desconnectat */
     public void cleanupDisconnected(WebSocket conn) {
         remove(conn);
     }

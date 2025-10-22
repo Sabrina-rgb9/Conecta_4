@@ -14,7 +14,6 @@ public class Main extends Application {
 
     public static UtilsWS wsClient;
 
-    // Controladors de les vistes
     public static CtrlConfig ctrlConfig;
     public static CtrlOpponentSelection ctrlOpponentSelection;
     public static CtrlWaitingRoom ctrlWaitingRoom;
@@ -22,18 +21,15 @@ public class Main extends Application {
     public static CtrlGame ctrlGame;
     public static CtrlResult ctrlResult;
 
-    public static void main(String[] args) {
-        launch(args);
-    }
+    public static void main(String[] args) { launch(args); }
 
     @Override
     public void start(Stage stage) throws Exception {
-        final int windowWidth = 800;
-        final int windowHeight = 600;
+        final int windowWidth = 850;
+        final int windowHeight = 700;
 
         UtilsViews.parentContainer.setStyle("-fx-font: 14 arial;");
 
-        // Carregar totes les vistes
         UtilsViews.addView(getClass(), "ViewConfig", "/assets/viewConfig.fxml");
         UtilsViews.addView(getClass(), "ViewOpponentSelection", "/assets/viewOpponentSelection.fxml");
         UtilsViews.addView(getClass(), "ViewWaitingRoom", "/assets/viewWaitingRoom.fxml");
@@ -41,7 +37,6 @@ public class Main extends Application {
         UtilsViews.addView(getClass(), "ViewGame", "/assets/viewGame.fxml");
         UtilsViews.addView(getClass(), "ViewResult", "/assets/viewResult.fxml");
 
-        // Obtenir controladors
         ctrlConfig = (CtrlConfig) UtilsViews.getController("ViewConfig");
         ctrlOpponentSelection = (CtrlOpponentSelection) UtilsViews.getController("ViewOpponentSelection");
         ctrlWaitingRoom = (CtrlWaitingRoom) UtilsViews.getController("ViewWaitingRoom");
@@ -56,22 +51,19 @@ public class Main extends Application {
         stage.setMinHeight(windowHeight);
         stage.show();
 
-        // Icona
         if (!System.getProperty("os.name").toLowerCase().contains("mac")) {
             try {
                 Image icon = new Image(getClass().getResourceAsStream("/assets/icon.png"));
                 stage.getIcons().add(icon);
             } catch (Exception e) {
-                System.out.println("No s'ha trobat l'icona");
+                System.out.println("No se encontró el icono");
             }
         }
     }
 
     @Override
     public void stop() {
-        if (wsClient != null) {
-            wsClient.forceExit();
-        }
+        if (wsClient != null) wsClient.forceExit();
         Platform.exit();
     }
 
@@ -81,26 +73,9 @@ public class Main extends Application {
         pause.play();
     }
 
-    public static void connectToServer() {
-        ctrlConfig.txtMessage.setTextFill(Color.BLACK);
-        ctrlConfig.txtMessage.setText("Connectant...");
-
-        pauseDuring(1000, () -> {
-            String protocol = ctrlConfig.txtProtocol.getText().trim();
-            String host = ctrlConfig.txtHost.getText().trim();
-            String port = ctrlConfig.txtPort.getText().trim();
-
-            if (protocol.isEmpty() || host.isEmpty() || port.isEmpty()) {
-                showError("Tots els camps són obligatoris");
-                return;
-            }
-
-            String wsUrl = protocol + "://" + host + ":" + port;
-            wsClient = UtilsWS.getSharedInstance(wsUrl);
-
-            wsClient.onMessage(response -> Platform.runLater(() -> handleWebSocketMessage(response)));
-            wsClient.onError(response -> Platform.runLater(() -> handleWebSocketError(response)));
-        });
+    private static String getCurrentPlayerName() {
+        if (ctrlOpponentSelection != null) return ctrlOpponentSelection.getPlayerName();
+        return "JugadorDesconocido";
     }
 
     private static void handleWebSocketMessage(String response) {
@@ -110,84 +85,17 @@ public class Main extends Application {
 
             switch (type) {
                 case "clients" -> {
-                    String myName = msg.getString("id");
-                    Platform.runLater(() -> {
-                        ctrlOpponentSelection.setPlayerName(myName);
-                        ctrlWaitingRoom.setPlayerName(myName);
-                        ctrlResult.setPlayerName(myName);
-                    });
-                    UtilsViews.setView("ViewOpponentSelection");
                     ctrlOpponentSelection.handleMessage(msg);
-                }
-                case "invitationAccepted", "gameStarted" -> {
-                    UtilsViews.setView("ViewWaitingRoom");
                     ctrlWaitingRoom.handleMessage(msg);
                 }
-                case "countdown" -> {
-                    UtilsViews.setView("ViewCountdown");
-                    ctrlCountdown.handleMessage(msg);
-                }
-                case "serverData" -> {
-                    // >>> AFEGIT: Defineix clientName i role <<<
-                    String myName = getCurrentPlayerName();
-                    msg.put("clientName", myName);
-                    
-                    // Determina el rol basat en playerR/playerY
-                    JSONObject game = msg.getJSONObject("game");
-                    String playerR = game.getString("playerR");
-                    String role = playerR.equals(myName) ? "R" : "Y";
-                    msg.put("role", role);
-                    // <<< FI AFEGIT >>>
-
-                    String status = game.getString("status");
-                    if ("playing".equals(status) || "win".equals(status) || "draw".equals(status)) {
-                        UtilsViews.setView("ViewGame");
-                        ctrlGame.handleMessage(msg);
-                    }
-                }
-                case "gameResult" -> {
-                    UtilsViews.setView("ViewResult");
-                    ctrlResult.handleMessage(msg);
-                }
-                default -> {
-                    String currentView = UtilsViews.getActiveView();
-                    switch (currentView) {
-                        case "ViewOpponentSelection" -> ctrlOpponentSelection.handleMessage(msg);
-                        case "ViewWaitingRoom" -> ctrlWaitingRoom.handleMessage(msg);
-                        case "ViewCountdown" -> ctrlCountdown.handleMessage(msg);
-                        case "ViewGame" -> ctrlGame.handleMessage(msg);
-                        case "ViewResult" -> ctrlResult.handleMessage(msg);
-                    }
-                }
+                case "invite", "invitationSent", "inviteAccepted" -> ctrlOpponentSelection.handleMessage(msg);
+                case "gameStarted", "countdown", "opponentDisconnected" -> ctrlWaitingRoom.handleMessage(msg);
+                case "serverData" -> ctrlGame.handleMessage(msg);
+                case "gameResult" -> ctrlResult.handleMessage(msg);
             }
         } catch (Exception e) {
-            System.err.println("Error processant missatge: " + response);
+            System.err.println("Error procesando mensaje WS: " + response);
             e.printStackTrace();
         }
-    }
-
-    // >>> AFEGIT: Mètode per obtenir el nom del jugador actual <<<
-    private static String getCurrentPlayerName() {
-        if (ctrlOpponentSelection != null) {
-            return ctrlOpponentSelection.getPlayerName();
-        }
-        return "JugadorDesconegut";
-    }
-    // <<< FI AFEGIT >>>
-
-    private static void handleWebSocketError(String response) {
-        String errorMsg = "Error de connexió";
-        if (response != null && response.contains("Connection refused")) {
-            errorMsg = "No es pot connectar al servidor";
-        }
-        showError(errorMsg);
-    }
-
-    private static void showError(String message) {
-        Platform.runLater(() -> {
-            ctrlConfig.txtMessage.setTextFill(Color.RED);
-            ctrlConfig.txtMessage.setText(message);
-            pauseDuring(2000, () -> ctrlConfig.txtMessage.setText(""));
-        });
     }
 }
