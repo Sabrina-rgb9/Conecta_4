@@ -78,6 +78,28 @@ public class Main extends Application {
         return "JugadorDesconocido";
     }
 
+    public static void connectToServer() {
+        ctrlConfig.txtMessage.setTextFill(Color.BLACK);
+        ctrlConfig.txtMessage.setText("Connectant...");
+
+        pauseDuring(1000, () -> {
+            String protocol = ctrlConfig.txtProtocol.getText().trim();
+            String host = ctrlConfig.txtHost.getText().trim();
+            String port = ctrlConfig.txtPort.getText().trim();
+
+            if (protocol.isEmpty() || host.isEmpty() || port.isEmpty()) {
+                System.out.println("Tots els camps són obligatoris");
+                return;
+            }
+
+            String wsUrl = protocol + "://" + host + ":" + port;
+            wsClient = UtilsWS.getSharedInstance(wsUrl);
+
+            wsClient.onMessage(response -> Platform.runLater(() -> handleWebSocketMessage(response)));
+            wsClient.onError(response -> Platform.runLater(() -> handleWebSocketMessage(response)));
+        });
+    }
+
     private static void handleWebSocketMessage(String response) {
         try {
             JSONObject msg = new JSONObject(response);
