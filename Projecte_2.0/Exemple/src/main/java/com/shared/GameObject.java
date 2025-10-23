@@ -21,8 +21,8 @@ public class GameObject {
     public String toString() {
         return this.toJSON().toString();
     }
-    
-    // Converteix l'objecte a JSON
+
+    // Convierte el objeto a JSON
     public JSONObject toJSON() {
         JSONObject obj = new JSONObject();
         obj.put("id", id);
@@ -33,15 +33,14 @@ public class GameObject {
         return obj;
     }
 
-    // Crea un GameObjects a partir de JSON
+    // Crea un GameObject a partir de JSON
     public static GameObject fromJSON(JSONObject obj) {
-        GameObject go = new GameObject(
+        return new GameObject(
             obj.optString("id", null),
             obj.optInt("x", 0),
             obj.optInt("y", 0),
             obj.optInt("cols", 1),
             obj.optInt("rows", 1)
         );
-        return go;
     }
 }

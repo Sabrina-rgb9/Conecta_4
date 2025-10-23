@@ -8,14 +8,27 @@
 
 <AnchorPane fx:id="anchor" minHeight="500.0" minWidth="600.0" xmlns="http://javafx.com/javafx/22" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.client.CtrlPlay">
    <children>
-      <VBox alignment="CENTER" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0">
+      <VBox alignment="CENTER" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0" AnchorPane.bottomAnchor="0.0">
          <children>
-            <Label fx:id="title" alignment="CENTER" text="Test game">
+            <!-- Título del juego -->
+            <Label fx:id="title" alignment="CENTER" text="Conecta 4">
                <font>
                   <Font size="36.0" />
                </font>
             </Label>
-            <Canvas fx:id="canvas" height="25.0" width="25.0" VBox.vgrow="ALWAYS" />
+            
+            <!-- Indicador de turno -->
+            <Label fx:id="lblTurn" text="Esperando jugador..." alignment="CENTER">
+               <font>
+                  <Font size="18.0" />
+               </font>
+            </Label>
+
+            <!-- Canvas del tablero -->
+            <Canvas fx:id="canvas" height="420.0" width="490.0" VBox.vgrow="ALWAYS" />
+            
+            <!-- Indicador del mouse del oponente -->
+            <Label fx:id="lblOpponentMouse" text="" alignment="CENTER" />
          </children>
       </VBox>
    </children>

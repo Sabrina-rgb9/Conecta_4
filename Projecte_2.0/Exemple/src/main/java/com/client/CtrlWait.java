@@ -1,13 +1,12 @@
 package com.client;
 
-import java.net.URL;
-import java.util.ResourceBundle;
-
+import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.fxml.Initializable;
 import javafx.scene.control.Label;
 
-public class CtrlWait implements Initializable {
+import java.util.Map;
+
+public class CtrlWait {
 
     @FXML
     public Label txtTitle;
@@ -18,8 +17,28 @@ public class CtrlWait implements Initializable {
     @FXML
     public Label txtPlayer1;
 
-    @Override
-    public void initialize(URL url, ResourceBundle rb) {
+    // Estado de los jugadores conectados
+    private String[] players = new String[2];
 
+    /**
+     * Se llama cuando se recibe una actualización del servidor.
+     * @param clients Map de nombre -> ClientData
+     * @param currentTurn nombre del jugador con turno activo
+     */
+    public void updatePlayers(Map<String, String> clients, String currentTurn) {
+        Platform.runLater(() -> {
+            int i = 0;
+            for (String name : clients.values()) {
+                if (i < 2) players[i++] = name;
+            }
+            txtPlayer0.setText(players[0] != null ? players[0] : "?");
+            txtPlayer1.setText(players[1] != null ? players[1] : "?");
+
+            if (currentTurn != null && currentTurn.equals(UtilsWS.getSharedInstance("").clientName)) {
+                txtTitle.setText("Es tu turno");
+            } else {
+                txtTitle.setText("Esperando jugador...");
+            }
+        });
     }
 }

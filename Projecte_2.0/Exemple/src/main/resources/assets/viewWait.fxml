@@ -12,7 +12,7 @@
    <children>
       <VBox alignment="CENTER" prefHeight="200.0" prefWidth="100.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
          <children>
-            <Label fx:id="txtTitle" alignment="CENTER" prefHeight="17.0" prefWidth="600.0" text="Waiting for players ..." VBox.vgrow="NEVER">
+            <Label fx:id="txtTitle" alignment="CENTER" prefHeight="17.0" prefWidth="600.0" text="Esperando jugadores..." VBox.vgrow="NEVER">
                <font>
                   <Font size="32.0" />
                </font>
@@ -25,7 +25,7 @@
                <children>
                   <VBox alignment="CENTER" prefHeight="200.0" prefWidth="100.0" HBox.hgrow="ALWAYS">
                      <children>
-                        <Label fx:id="txtPlayer0" text="?">
+                        <Label fx:id="txtPlayer0" text="?" textFill="RED">
                            <font>
                               <Font size="40.0" />
                            </font>
@@ -37,7 +37,7 @@
                   </VBox>
                   <VBox alignment="CENTER" prefHeight="200.0" prefWidth="100.0" HBox.hgrow="ALWAYS">
                      <children>
-                        <Label fx:id="txtPlayer1" text="?">
+                        <Label fx:id="txtPlayer1" text="?" textFill="YELLOW">
                            <font>
                               <Font size="40.0" />
                            </font>

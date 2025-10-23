@@ -1,297 +1,185 @@
 package com.client;
 
-import java.net.URL;
-import java.util.ResourceBundle;
-
-import org.json.JSONObject;
-
+import com.shared.ClientData;
+import com.shared.GameObject;
+import javafx.animation.AnimationTimer;
+import javafx.animation.TranslateTransition;
 import javafx.fxml.FXML;
-import javafx.fxml.Initializable;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
+import javafx.util.Duration;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
-import com.shared.ClientData;
-import com.shared.GameObject;
+import java.util.HashMap;
+import java.util.Map;
 
-public class CtrlPlay implements Initializable {
+public class CtrlPlay {
+
+    @FXML private Canvas canvas;
+
+    private final int COLS = 7;
+    private final int ROWS = 6;
+    private double cellWidth, cellHeight;
+
+    private String myName;
+    private String myColor;
+    private String currentTurn;
+
+    private String[][] board; // [row][col] -> "RED", "YELLOW", null
+    private Map<String, double[]> opponentMouse = new HashMap<>();
+
+    private AnimationTimer timer;
 
     @FXML
-    public javafx.scene.control.Label title;
+    public void initialize() {
+        canvas.setWidth(700);
+        canvas.setHeight(600);
+        cellWidth = canvas.getWidth() / COLS;
+        cellHeight = canvas.getHeight() / ROWS;
 
-    @FXML
-    private Canvas canvas;
-    private GraphicsContext gc;
-    private Boolean showFPS = false;
+        board = new String[ROWS][COLS];
 
-    private PlayTimer animationTimer;
-    private PlayGrid grid;
+        canvas.setOnMouseMoved(this::handleMouseMove);
+        canvas.setOnMouseReleased(this::handleMouseRelease);
 
-    private Boolean mouseDragging = false;
-    private double mouseOffsetX, mouseOffsetY;
-
-    private GameObject selectedObject = null;
-
-    @Override
-    public void initialize(URL url, ResourceBundle rb) {
-
-        // Get drawing context
-        this.gc = canvas.getGraphicsContext2D();
-
-        // Set listeners
-        UtilsViews.parentContainer.heightProperty().addListener((observable, oldValue, newvalue) -> { onSizeChanged(); });
-        UtilsViews.parentContainer.widthProperty().addListener((observable, oldValue, newvalue) -> { onSizeChanged(); });
-        
-        canvas.setOnMouseMoved(this::setOnMouseMoved);
-        canvas.setOnMousePressed(this::onMousePressed);
-        canvas.setOnMouseDragged(this::onMouseDragged);
-        canvas.setOnMouseReleased(this::onMouseReleased);
-
-        // Define grid
-        grid = new PlayGrid(25, 25, 25, 10, 10);
-
-        // Start run/draw timer bucle
-        animationTimer = new PlayTimer(this::run, this::draw, 0);
-        start();
+        timer = new AnimationTimer() {
+            @Override
+            public void handle(long now) {
+                draw();
+            }
+        };
+        timer.start();
     }
 
-    // When window changes its size
-    public void onSizeChanged() {
-
-        double width = UtilsViews.parentContainer.getWidth();
-        double height = UtilsViews.parentContainer.getHeight();
-        canvas.setWidth(width);
-        canvas.setHeight(height);
+    private boolean myTurn() {
+        return myName != null && myName.equals(currentTurn);
     }
 
-    // Start animation timer
-    public void start() {
-        animationTimer.start();
-    }
+    private void handleMouseMove(MouseEvent e) {
+        if (!myTurn()) return;
 
-    // Stop animation timer
-    public void stop() {
-        animationTimer.stop();
-    }
-
-    private void setOnMouseMoved(MouseEvent event) {
-        double mouseX = event.getX();
-        double mouseY = event.getY();
-
-        String color = Main.clients.stream()
-            .filter(c -> c.name.equals(Main.clientName))
-            .map(c -> c.color)
-            .findFirst()
-            .orElse("gray");
-
-        ClientData cd = new ClientData(
-            Main.clientName, 
-            color,
-            (int)mouseX, 
-            (int)mouseY,  
-            grid.isPositionInsideGrid(mouseX, mouseY) ? grid.getRow(mouseY) : -1,
-            grid.isPositionInsideGrid(mouseX, mouseY) ? grid.getCol(mouseX) : -1
-        );
+        double mouseX = e.getX();
+        double mouseY = e.getY();
 
         JSONObject msg = new JSONObject();
         msg.put("type", "clientMouseMoving");
-        msg.put("value", cd.toJSON());
+        JSONObject value = new JSONObject();
+        value.put("mouseX", mouseX);
+        value.put("mouseY", mouseY);
+        msg.put("value", value);
 
-        if (Main.wsClient != null) {
-            Main.wsClient.safeSend(msg.toString());
+        UtilsWS.getSharedInstance(null).safeSend(msg.toString());
+    }
+
+    private void handleMouseRelease(MouseEvent e) {
+        if (!myTurn()) return;
+
+        int col = (int) (e.getX() / cellWidth);
+        if (col < 0 || col >= COLS) return;
+
+        int row = findAvailableRow(col);
+        if (row < 0) return;
+
+        board[row][col] = myColor;
+        animateDrop(row, col, myColor);
+
+        JSONObject msg = new JSONObject();
+        msg.put("type", "clientObjectMoving");
+        JSONObject value = new JSONObject();
+        value.put("col", col);
+        value.put("row", row);
+        value.put("color", myColor);
+        msg.put("value", value);
+
+        UtilsWS.getSharedInstance(null).safeSend(msg.toString());
+    }
+
+    private int findAvailableRow(int col) {
+        for (int r = ROWS - 1; r >= 0; r--) {
+            if (board[r][col] == null) return r;
         }
+        return -1;
     }
 
-    private void onMousePressed(MouseEvent event) {
+    private void draw() {
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        gc.setFill(Color.LIGHTBLUE);
+        gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
-        double mouseX = event.getX();
-        double mouseY = event.getY();
+        // Dibujar tablero
+        gc.setFill(Color.WHITE);
+        for (int r = 0; r < ROWS; r++) {
+            for (int c = 0; c < COLS; c++) {
+                double x = c * cellWidth;
+                double y = r * cellHeight;
+                gc.fillOval(x + 5, y + 5, cellWidth - 10, cellHeight - 10);
 
-        selectedObject = null;
-        mouseDragging = false;
-
-        for (GameObject go : Main.objects) {
-            if (isPositionInsideObject(mouseX, mouseY, go.x, go.y, go.col, go.row)) {
-                selectedObject = new GameObject(go.id, go.x, go.y, go.col, go.row);
-                mouseDragging = true;
-                mouseOffsetX = event.getX() - go.x;
-                mouseOffsetY = event.getY() - go.y;
-                break;
-            }
-        }
-    }
-
-    private void onMouseDragged(MouseEvent event) {
-        if (mouseDragging) {
-            double objX = event.getX() - mouseOffsetX;
-            double objY = event.getY() - mouseOffsetY;
-
-            selectedObject = new GameObject(selectedObject.id, (int)objX, (int)objY, (int)selectedObject.col, (int)selectedObject.row);
-
-            JSONObject msg = new JSONObject();
-            msg.put("type", "clientObjectMoving");
-            msg.put("value", selectedObject.toJSON());
-
-            if (Main.wsClient != null) {
-                Main.wsClient.safeSend(msg.toString());
-            }
-        }
-        setOnMouseMoved(event);
-    }
-
-    private void onMouseReleased(MouseEvent event) {
-        if (selectedObject != null) {
-            double objX = event.getX() - mouseOffsetX; // left tip X
-            double objY = event.getY() - mouseOffsetY; // left tip Y
-
-            // build object with dragged position (size stays in col/row)
-            selectedObject = new GameObject(
-                selectedObject.id,
-                (int) objX,
-                (int) objY,
-                selectedObject.col,
-                selectedObject.row
-            );
-
-            // snap by left-top corner to underlying cell
-            if (grid.isPositionInsideGrid(objX, objY)) {
-                snapObjectLeftTop(selectedObject);
-            }
-
-            JSONObject msg = new JSONObject();
-            msg.put("type", "clientObjectMoving");
-            msg.put("value", selectedObject.toJSON());
-            if (Main.wsClient != null) Main.wsClient.safeSend(msg.toString());
-
-            mouseDragging = false;
-            selectedObject = null;
-        }
-    }
-
-    // Snap piece so its left-top corner sits exactly on the grid cell under its left tip.
-    private void snapObjectLeftTop(GameObject obj) {
-        int col = grid.getCol(obj.x); // left X -> column
-        int row = grid.getRow(obj.y); // top Y  -> row
-
-        // clamp inside grid
-        col = (int) Math.max(0, Math.min(col, grid.getCols() - 1));
-        row = (int) Math.max(0, Math.min(row, grid.getRows() - 1));
-
-        obj.x = grid.getCellX(col);
-        obj.y = grid.getCellY(row);
-    }
-
-    public Boolean isPositionInsideObject(double positionX, double positionY, int objX, int objY, int cols, int rows) {
-        double cellSize = grid.getCellSize();
-        double objectWidth = cols * cellSize;
-        double objectHeight = rows * cellSize;
-
-        double objectLeftX = objX;
-        double objectRightX = objX + objectWidth;
-        double objectTopY = objY;
-        double objectBottomY = objY + objectHeight;
-
-        return positionX >= objectLeftX && positionX < objectRightX &&
-               positionY >= objectTopY && positionY < objectBottomY;
-    }
-
-    // Run game (and animations)
-    private void run(double fps) {
-
-        if (animationTimer.fps < 1) { return; }
-
-        // Update objects and animations here
-    }
-
-    // Draw game to canvas
-    public void draw() {
-
-        if (Main.clients == null) { return; }
-
-        // Clean drawing area
-        gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
-
-        // Draw colored 'over' cells
-        for (ClientData clientData : Main.clients) {
-            // Comprovar si està dins dels límits de la graella
-            if (clientData.row >= 0 && clientData.col >= 0) {
-                Color base = getColor(clientData.color);
-                Color alpha = new Color(base.getRed(), base.getGreen(), base.getBlue(), 0.5);
-                gc.setFill(alpha); 
-                gc.fillRect(grid.getCellX(clientData.col), grid.getCellY(clientData.row), grid.getCellSize(), grid.getCellSize());
+                if (board[r][c] != null) {
+                    gc.setFill(board[r][c].equals("RED") ? Color.RED : Color.YELLOW);
+                    gc.fillOval(x + 5, y + 5, cellWidth - 10, cellHeight - 10);
+                    gc.setFill(Color.WHITE);
+                }
             }
         }
 
-        // Draw grid
-        drawGrid();
-
-        // Draw mouse circles
-        for (ClientData clientData : Main.clients) {
-            gc.setFill(getColor(clientData.color)); 
-            gc.fillOval(clientData.mouseX - 5, clientData.mouseY - 5, 10, 10);
+        // Dibujar punteros rivales
+        for (double[] pos : opponentMouse.values()) {
+            gc.setFill(Color.BLACK);
+            gc.fillOval(pos[0] - 5, pos[1] - 5, 10, 10);
         }
 
-        // Draw objects
-        for (GameObject go : Main.objects) {
-            if (selectedObject != null && go.id.equals(selectedObject.id)) {
-                drawObject(selectedObject);
-            } else {
-                drawObject(go);
-            }
-        }
-
-        // Draw FPS if needed
-        if (showFPS) { animationTimer.drawFPS(gc); }   
-    }
-
-    public void drawGrid() {
-        gc.setStroke(Color.BLACK);
-
-        for (int row = 0; row < grid.getRows(); row++) {
-            for (int col = 0; col < grid.getCols(); col++) {
-                double cellSize = grid.getCellSize();
-                double x = grid.getStartX() + col * cellSize;
-                double y = grid.getStartY() + row * cellSize;
-                gc.strokeRect(x, y, cellSize, cellSize);
-            }
-        }
-    }
-
-    public void drawObject(GameObject obj) {
-        double cellSize = grid.getCellSize();
-
-        int x = obj.x;
-        int y = obj.y;
-        double width = obj.col * cellSize;
-        double height = obj.row * cellSize;
-
-        // Seleccionar un color basat en l'objectId
-        Color color = Color.GRAY;
-
-        // Dibuixar el rectangle
-        gc.setFill(color);
-        gc.fillRect(x, y, width, height);
-
-        // Dibuixar el contorn
-        gc.setStroke(Color.BLACK);
-        gc.strokeRect(x, y, width, height);
-
-        // Opcionalment, afegir text (per exemple, l'objectId)
+        // Texto de turno
         gc.setFill(Color.BLACK);
-        gc.fillText(obj.id, x + 5, y + 15);
+        gc.fillText(myTurn() ? "Et toca jugar" : "Esperant torn adversari", 10, 15);
     }
 
-    public Color getColor(String colorName) {
-        switch (colorName.toLowerCase()) {
-            case "red":
-                return Color.RED;
-            case "blue":
-                return Color.BLUE;
-            case "yellow":
-                return Color.YELLOW;
-            default:
-                return Color.LIGHTGRAY; // Default color
+    private void animateDrop(int row, int col, String color) {
+        double startY = 0;
+        double endY = row * cellHeight;
+        double x = col * cellWidth;
+
+        TranslateTransition tt = new TranslateTransition(Duration.millis(300), canvas);
+        tt.setFromY(startY);
+        tt.setToY(endY);
+        tt.setOnFinished(e -> draw());
+        tt.play();
+    }
+
+    // Actualizar desde servidor
+    public void updateFromServer(JSONObject data) {
+        JSONArray clientsArray = data.getJSONArray("clientsList");
+        JSONArray objectsArray = data.getJSONArray("objectsList");
+
+        currentTurn = null;
+
+        for (int i = 0; i < clientsArray.length(); i++) {
+            JSONObject c = clientsArray.getJSONObject(i);
+            String name = c.getString("name");
+            String color = c.getString("color");
+            if (myName == null) myName = name;
+            if (myColor == null) myColor = color;
+
+            int mx = c.optInt("mouseX", -1);
+            int my = c.optInt("mouseY", -1);
+            if (!name.equals(myName) && mx >= 0 && my >= 0) {
+                opponentMouse.put(name, new double[]{mx, my});
+            }
+
+            boolean turn = c.optBoolean("turn", false);
+            if (turn) currentTurn = name;
         }
+
+        for (int i = 0; i < objectsArray.length(); i++) {
+            JSONObject obj = objectsArray.getJSONObject(i);
+            int r = obj.getInt("row");
+            int c = obj.getInt("col");
+            String color = obj.getString("color");
+            board[r][c] = color;
+        }
+
+        draw();
     }
 }
