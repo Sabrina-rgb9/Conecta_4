@@ -43,7 +43,7 @@ public class Main extends WebSocketServer {
 
     /** Llista de colors disponibles per als clients connectats. */
     private static final List<String> PLAYER_COLORS = Arrays.asList(
-        "GREEN", "ORANGE", "RED", "GRAY", "PURPLE", "YELLOW", "BLUE"
+        "RED","YELLOW"
     );
 
     /** Nombre de clients necessaris per iniciar el compte enrere. */

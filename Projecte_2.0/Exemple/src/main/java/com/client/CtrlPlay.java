@@ -288,22 +288,8 @@ public class CtrlPlay implements Initializable {
                 return Color.RED;
             case "blue":
                 return Color.BLUE;
-            case "green":
-                return Color.GREEN;
             case "yellow":
                 return Color.YELLOW;
-            case "orange":
-                return Color.ORANGE;
-            case "purple":
-                return Color.PURPLE;
-            case "pink":
-                return Color.PINK;
-            case "brown":
-                return Color.BROWN;
-            case "gray":
-                return Color.GRAY;
-            case "black":
-                return Color.BLACK;
             default:
                 return Color.LIGHTGRAY; // Default color
         }
