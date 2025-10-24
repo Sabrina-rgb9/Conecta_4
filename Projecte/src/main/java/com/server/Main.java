@@ -52,6 +52,7 @@ public class Main extends WebSocketServer {
                 case "acceptInvite" -> gameManager.accept(sender, msg.getString("origin"));
                 case "clientPlay" -> gameManager.play(sender, msg.getInt("col"));
                 case "clientMouseMoving" -> handleMouseMoving(sender, msg.getDouble("x"), msg.getDouble("y"));
+                case "clientPieceMoving" -> handlePieceMoving(sender, msg.getDouble("x"), msg.getDouble("y"), msg.optString("pieceId", null));
             }
         } catch (Exception e) {
             System.err.println("⚠️ Error amb " + sender + ": " + message);
@@ -73,8 +74,10 @@ public class Main extends WebSocketServer {
         if (sessionId == null) return;
 
         GameSession session = gameManager.getSession(sessionId);
-        if (session == null) return;
-
+        if (session != null) {
+            session.updateMouse(player, x, y);
+        }
+        // Envía a oponente
         String other = session.getPlayerR().equals(player) ? session.getPlayerY() : session.getPlayerR();
         WebSocket otherConn = clients.socketByName(other);
         if (otherConn != null) {
@@ -89,6 +92,11 @@ public class Main extends WebSocketServer {
                 clients.cleanupDisconnected(otherConn);
             }
         }
+    }
+
+    private void handlePieceMoving(String player, double x, double y, String pieceId) {
+        // Similar a mouse, pero opcional para arrastre
+        handleMouseMoving(player, x, y);  // Reutiliza lógica
     }
 
     private void broadcastClientsList() {

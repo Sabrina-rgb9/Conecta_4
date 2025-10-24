@@ -4,7 +4,11 @@ import org.java_websocket.WebSocket;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import com.shared.GameObject;
 
 public class GameSession {
 
@@ -23,12 +27,26 @@ public class GameSession {
 
     private final AtomicInteger countdownSeconds = new AtomicInteger(0);
 
+    // Nuevos campos para mouse y objetos
+    private volatile double mouseXR = -1, mouseYR = -1, mouseXY = -1, mouseYY = -1;
+    private final List<GameObject> objectsList = new ArrayList<>();
+
     public GameSession(String playerR, String playerY) {
         this.playerR = playerR;
         this.playerY = playerY;
         clearBoard();
         this.turn = playerR;
         this.status = Status.WAITING;
+        // Inicializa objectsList con fichas disponibles
+        initializeObjects();
+    }
+
+    private void initializeObjects() {
+        // 5 fichas rojas y 5 amarillas en posiciones fijas (ajusta según UI)
+        for (int i = 0; i < 5; i++) {
+            objectsList.add(new GameObject("R_" + i, 610.0 + i * 60, 80.0, 20.0, -1, -1, "R"));
+            objectsList.add(new GameObject("Y_" + i, 610.0 + i * 60, 140.0, 20.0, -1, -1, "Y"));
+        }
     }
 
     private void clearBoard() {
@@ -113,15 +131,26 @@ public class GameSession {
         return cnt;
     }
 
+    public void updateMouse(String player, double x, double y) {
+        if (player.equals(playerR)) { mouseXR = x; mouseYR = y; }
+        else if (player.equals(playerY)) { mouseXY = x; mouseYY = y; }
+    }
+
     public synchronized JSONObject toServerData() {
         JSONObject res = new JSONObject();
         res.put("type","serverData");
         res.put("status",status.name().toLowerCase());
 
         JSONArray clientsList = new JSONArray();
-        clientsList.put(new JSONObject().put("name",playerR).put("role","R"));
-        clientsList.put(new JSONObject().put("name",playerY).put("role","Y"));
+        clientsList.put(new JSONObject().put("name",playerR).put("role","R").put("mouseX",mouseXR).put("mouseY",mouseYR));
+        clientsList.put(new JSONObject().put("name",playerY).put("role","Y").put("mouseX",mouseXY).put("mouseY",mouseYY));
         res.put("clientsList",clientsList);
+
+        JSONArray objectsArr = new JSONArray();
+        for (GameObject obj : objectsList) {
+            objectsArr.put(obj.toJSON());
+        }
+        res.put("objectsList", objectsArr);
 
         JSONObject game = new JSONObject();
         game.put("status",status.name().toLowerCase());

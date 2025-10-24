@@ -36,6 +36,12 @@ public class CtrlCountdown {
         }
     }
 
+    public void startCountdown(int seconds) {
+        currentCount = seconds;
+        Platform.runLater(() -> lblCountdown.setText(String.valueOf(currentCount)));
+        startCountdown();
+    }
+
     private void startCountdown() {
         if (currentCount <= 0) {
             goToGameView();

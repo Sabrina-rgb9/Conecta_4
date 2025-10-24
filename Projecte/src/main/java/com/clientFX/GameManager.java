@@ -1,14 +1,14 @@
 package com.clientFX;
 
 import javafx.application.Platform;
+import javafx.scene.control.Alert;
 import org.json.JSONObject;
 
 public class GameManager {
     private static GameManager instance;
     private GameSession currentSession;
 
-    private GameManager() {
-    }
+    private GameManager() {}
 
     public static synchronized GameManager getInstance() {
         if (instance == null) {
@@ -31,24 +31,29 @@ public class GameManager {
         String type = msg.getString("type");
 
         switch (type) {
-            case "updateClients" -> Platform.runLater(() -> {
+            case "clients" -> Platform.runLater(() -> {
                 CtrlOpponentSelection ctrl = (CtrlOpponentSelection) UtilsViews.getController("ViewOpponentSelection");
-                if (ctrl != null) ctrl.updateAvailablePlayers(msg);
+                if (ctrl != null) ctrl.handleMessage(msg);
             });
 
-            case "inviteReceived" -> Platform.runLater(() -> {
+            case "invite" -> Platform.runLater(() -> {
+                CtrlOpponentSelection ctrl = (CtrlOpponentSelection) UtilsViews.getController("ViewOpponentSelection");
+                if (ctrl != null) ctrl.handleMessage(msg);
+            });
+
+            case "invitationSent" -> Platform.runLater(() -> {
+                CtrlOpponentSelection ctrl = (CtrlOpponentSelection) UtilsViews.getController("ViewOpponentSelection");
+                if (ctrl != null) ctrl.handleMessage(msg);
+            });
+
+            case "invitationAccepted" -> Platform.runLater(() -> {
+                CtrlOpponentSelection ctrl = (CtrlOpponentSelection) UtilsViews.getController("ViewOpponentSelection");
+                if (ctrl != null) ctrl.handleMessage(msg);
+            });
+
+            case "gameStarted", "countdown", "opponentDisconnected" -> Platform.runLater(() -> {
                 CtrlWaitingRoom ctrl = (CtrlWaitingRoom) UtilsViews.getController("ViewWaitingRoom");
-                if (ctrl != null) ctrl.handleInvite(msg);
-            });
-
-            case "gameStart" -> Platform.runLater(() -> {
-                CtrlGame ctrl = (CtrlGame) UtilsViews.getController("ViewGame");
-                if (ctrl != null) ctrl.startGame(msg);
-            });
-
-            case "move" -> Platform.runLater(() -> {
-                CtrlGame ctrl = (CtrlGame) UtilsViews.getController("ViewGame");
-                if (ctrl != null) ctrl.updateBoard(msg);
+                if (ctrl != null) ctrl.handleMessage(msg);
             });
 
             case "gameResult" -> Platform.runLater(() -> {
@@ -56,9 +61,7 @@ public class GameManager {
                 if (ctrl != null) ctrl.handleMessage(msg);
             });
 
-            case "error" -> Platform.runLater(() ->
-                UtilsViews.showError("Error del servidor: " + msg.optString("message", "Desconegut"))
-            );
+            case "error" -> Platform.runLater(() -> showError("Error del servidor: " + msg.optString("message", "Desconegut")));
 
             default -> System.out.println("⚠️ Missatge desconegut del servidor: " + msg);
         }
@@ -66,7 +69,7 @@ public class GameManager {
 
     public void sendMessage(JSONObject json) {
         if (Main.wsClient != null && Main.wsClient.isOpen()) {
-            Main.wsClient.send(json.toString());
+            Main.wsClient.safeSend(json.toString());
         } else {
             System.err.println("⚠️ No hi ha connexió amb el servidor.");
         }
@@ -74,5 +77,16 @@ public class GameManager {
 
     public void reset() {
         currentSession = null;
+    }
+
+    // 🔸 Método local de utilidad para mostrar errores sin depender de UtilsViews
+    private void showError(String message) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Error");
+            alert.setHeaderText("Error de comunicació");
+            alert.setContentText(message);
+            alert.showAndWait();
+        });
     }
 }
