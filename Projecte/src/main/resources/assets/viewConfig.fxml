@@ -6,137 +6,56 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.Pane?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
 <AnchorPane fx:id="anchor" minHeight="500.0" minWidth="600.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.clientFX.CtrlConfig">
    <children>
-      <VBox alignment="CENTER" prefHeight="200.0" prefWidth="100.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+      <VBox alignment="CENTER" spacing="10" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
          <children>
-            <Label alignment="CENTER" prefHeight="17.0" prefWidth="600.0" text="Server setup" VBox.vgrow="NEVER">
+            <Label text="Server setup" alignment="CENTER">
                <font>
-                  <Font size="36.0" />
+                  <Font size="36.0"/>
                </font>
                <VBox.margin>
-                  <Insets top="16.0" />
+                  <Insets top="16.0"/>
                </VBox.margin>
             </Label>
-            <Pane prefHeight="200.0" prefWidth="200.0" />
-            <HBox alignment="CENTER" prefHeight="75.0" VBox.vgrow="NEVER">
-               <children>
-                  <VBox alignment="CENTER_RIGHT" prefHeight="200.0" prefWidth="100.0" HBox.hgrow="ALWAYS">
-                     <children>
-                        <Label text="Protocol">
-                           <font>
-                              <Font size="14.0" />
-                           </font>
-                           <padding>
-                              <Insets right="8.0" />
-                           </padding>
-                        </Label>
-                     </children>
-                  </VBox>
-                  <VBox alignment="CENTER_LEFT" prefHeight="200.0" prefWidth="100.0" HBox.hgrow="ALWAYS">
-                     <children>
-                        <TextField fx:id="txtProtocol" text="ws" VBox.vgrow="NEVER" />
-                     </children>
-                     <HBox.margin>
-                        <Insets />
-                     </HBox.margin>
-                     <padding>
-                        <Insets right="64.0" />
-                     </padding>
-                  </VBox>
-               </children>
-               <VBox.margin>
-                  <Insets bottom="8.0" top="8.0" />
-               </VBox.margin>
+
+            <!-- Campo Nombre del jugador -->
+            <HBox alignment="CENTER" spacing="10">
+                <Label text="Jugador:"/>
+                <TextField fx:id="txtPlayerName" promptText="Nom del jugador" prefWidth="200"/>
             </HBox>
-            <HBox alignment="CENTER" prefHeight="75.0">
-               <children>
-                  <VBox alignment="CENTER_RIGHT" prefHeight="200.0" prefWidth="100.0" HBox.hgrow="ALWAYS">
-                     <children>
-                        <Label text="Server IP">
-                           <font>
-                              <Font size="14.0" />
-                           </font>
-                           <padding>
-                              <Insets right="8.0" />
-                           </padding>
-                        </Label>
-                     </children>
-                  </VBox>
-                  <VBox alignment="CENTER_LEFT" prefHeight="200.0" prefWidth="100.0" HBox.hgrow="ALWAYS">
-                     <children>
-                        <TextField fx:id="txtHost" text="localhost" VBox.vgrow="NEVER" />
-                     </children>
-                     <HBox.margin>
-                        <Insets />
-                     </HBox.margin>
-                     <padding>
-                        <Insets right="64.0" />
-                     </padding>
-                  </VBox>
-               </children>
-               <VBox.margin>
-                  <Insets bottom="8.0" />
-               </VBox.margin>
+
+            <!-- Campo Protocolo -->
+            <HBox alignment="CENTER" spacing="10">
+                <Label text="Protocol:"/>
+                <TextField fx:id="txtProtocol" promptText="ws o wss" prefWidth="200"/>
             </HBox>
-            <HBox alignment="CENTER" prefHeight="75.0">
-               <children>
-                  <VBox alignment="CENTER_RIGHT" prefHeight="200.0" prefWidth="100.0" HBox.hgrow="ALWAYS">
-                     <children>
-                        <Label text="Port">
-                           <font>
-                              <Font size="14.0" />
-                           </font>
-                           <padding>
-                              <Insets right="8.0" />
-                           </padding>
-                        </Label>
-                     </children>
-                  </VBox>
-                  <VBox alignment="CENTER_LEFT" prefHeight="200.0" prefWidth="100.0" HBox.hgrow="ALWAYS">
-                     <children>
-                        <TextField fx:id="txtPort" text="3000" VBox.vgrow="NEVER" />
-                     </children>
-                     <HBox.margin>
-                        <Insets />
-                     </HBox.margin>
-                     <padding>
-                        <Insets right="64.0" />
-                     </padding>
-                  </VBox>
-               </children>
+
+            <!-- Campo Host -->
+            <HBox alignment="CENTER" spacing="10">
+                <Label text="Server IP:"/>
+                <TextField fx:id="txtHost" promptText="localhost o IP" prefWidth="200"/>
             </HBox>
-            <Button mnemonicParsing="false" onAction="#connectToServer" text="Connect"  fx:id="btnConnect" VBox.vgrow="NEVER">
-               <VBox.margin>
-                  <Insets top="16.0" />
-               </VBox.margin>
-            </Button>
-            <Label fx:id="txtMessage">
-               <VBox.margin>
-                  <Insets bottom="16.0" top="16.0" />
-               </VBox.margin>
-            </Label>
-            <Pane prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS" />
-            <HBox alignment="BOTTOM_LEFT" prefHeight="75.0">
-               <children>
-                  <Button mnemonicParsing="false" onAction="#setConfigLocal" text="Local">
-                     <HBox.margin>
-                        <Insets />
-                     </HBox.margin>
-                  </Button>
-                  <Button mnemonicParsing="false" onAction="#setConfigProxmox" text="Proxmox">
-                     <HBox.margin>
-                        <Insets left="8.0" />
-                     </HBox.margin>
-                  </Button>
-               </children>
-               <VBox.margin>
-                  <Insets bottom="8.0" left="8.0" right="8.0" top="8.0" />
-               </VBox.margin>
+
+            <!-- Campo Port -->
+            <HBox alignment="CENTER" spacing="10">
+                <Label text="Port:"/>
+                <TextField fx:id="txtPort" promptText="3000" prefWidth="200"/>
+            </HBox>
+
+            <!-- Botón Conectar -->
+            <Button text="Connect" fx:id="btnConnect" onAction="#connectToServer" prefWidth="150"/>
+
+            <!-- Label para mensajes -->
+            <Label fx:id="txtMessage" textFill="RED"/>
+
+            <!-- Botones Local / Proxmox -->
+            <HBox alignment="CENTER" spacing="20">
+                <Button text="Local" onAction="#setConfigLocal" prefWidth="100"/>
+                <Button text="Proxmox" onAction="#setConfigProxmox" prefWidth="100"/>
             </HBox>
          </children>
       </VBox>

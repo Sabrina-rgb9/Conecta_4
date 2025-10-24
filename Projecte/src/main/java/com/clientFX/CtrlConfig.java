@@ -1,14 +1,14 @@
 package com.clientFX;
 
-import javafx.fxml.FXML;
-import javafx.fxml.Initializable;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextField;
-import javafx.scene.paint.Color;
-
 import java.net.URL;
 import java.util.ResourceBundle;
+
+import javafx.fxml.FXML;
+import javafx.fxml.Initializable;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
+import javafx.scene.control.Button;
+import javafx.scene.paint.Color;
 
 public class CtrlConfig implements Initializable {
 
@@ -22,25 +22,25 @@ public class CtrlConfig implements Initializable {
     public TextField txtPort;
 
     @FXML
-    public TextField txtPlayerName; // Para que el jugador pueda poner su nombre
+    public TextField txtPlayerName; // Campo para ingresar el nombre del jugador
 
     @FXML
     public Label txtMessage;
 
-    @FXML
+    @FXML 
     private Button btnConnect;
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        // Inicializar valores por defecto
-        txtProtocol.setText("ws");
-        txtHost.setText("localhost");
-        txtPort.setText("3000");
+        // Configuración inicial por defecto
+        setConfigLocal();
     }
 
+    /**
+     * Acción del botón "Connect"
+     */
     @FXML
     private void connectToServer() {
-        // Validar campos
         String player = txtPlayerName.getText().trim();
         String protocol = txtProtocol.getText().trim();
         String host = txtHost.getText().trim();
@@ -51,10 +51,21 @@ public class CtrlConfig implements Initializable {
             return;
         }
 
+        // Guardar datos en Main
         Main.playerName = player;
+        Main.connectedByUser = true;
+        Main.readyToPlay = true;
+
+        // Mostrar mensaje de conexión
+        showMessage("Connectant...", Color.BLACK);
+
+        // Llamar al método de Main para iniciar la conexión
         Main.connectToServer();
     }
 
+    /**
+     * Configuración local predefinida
+     */
     @FXML
     private void setConfigLocal() {
         txtProtocol.setText("ws");
@@ -62,21 +73,26 @@ public class CtrlConfig implements Initializable {
         txtPort.setText("3000");
     }
 
+    /**
+     * Configuración Proxmox predefinida
+     */
     @FXML
     private void setConfigProxmox() {
         txtProtocol.setText("wss");
-        txtHost.setText("ccarrillo.ieti.site"); // IP o dominio Proxmox
+        txtHost.setText("ccarrillo.ieti.site");
         txtPort.setText("443");
     }
 
     /**
      * Muestra un mensaje temporal en txtMessage
+     * @param message Texto a mostrar
+     * @param color Color del texto
      */
-    private void showMessage(String message, Color color) {
+    public void showMessage(String message, Color color) {
         txtMessage.setTextFill(color);
         txtMessage.setText(message);
 
-        // Desaparece después de 2 segundos
+        // Desaparece después de 2 segundos usando la función de Main
         Main.pauseDuring(2000, () -> txtMessage.setText(""));
     }
 }
