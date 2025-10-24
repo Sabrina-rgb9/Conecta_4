@@ -21,6 +21,15 @@ public class UtilsViews {
     // Add one view to the list
     public static void addView(Class<?> cls, String name, String path) throws Exception {
         
+        // chequeo para evitar conflictos al cargar dos vistas
+        for (Node n : parentContainer.getChildren()) {
+            if (n.getId().equals(name)) {
+                System.err.println("⚠ La vista " + name + " ya existe. No se añadirá otra con el mismo id.");
+                return;
+            }
+        }
+
+
         boolean defaultView = false;
         FXMLLoader loader = new FXMLLoader(cls.getResource(path));
         Pane view = loader.load();
@@ -87,6 +96,7 @@ public class UtilsViews {
 
         ArrayList<Node> list = new ArrayList<>();
         list.addAll(parentContainer.getChildrenUnmodifiable());
+
 
         // Get current view
         Node curView = null;
@@ -176,4 +186,10 @@ public class UtilsViews {
         // Remove focus from buttons
         parentContainer.requestFocus();
     }
+
+    public static void clearAllViews() {
+        parentContainer.getChildren().clear();
+        controllers.clear();
+    }
+
 }

@@ -26,14 +26,16 @@ public class Main extends Application {
     
     public static String playerName = "";
 
+    private static final int WINDOW_WIDTH = 800;
+    private static final int WINDOW_HEIGHT = 600;
+
+
     public static void main(String[] args) {
         launch(args);
     }
 
     @Override
     public void start(Stage stage) throws Exception {
-        final int windowWidth = 800;
-        final int windowHeight = 600;
 
         UtilsViews.parentContainer.setStyle("-fx-font: 14 arial;");
 
@@ -53,11 +55,11 @@ public class Main extends Application {
         ctrlGame = (CtrlGame) UtilsViews.getController("ViewGame");
         ctrlResult = (CtrlResult) UtilsViews.getController("ViewResult");
 
-        Scene scene = new Scene(UtilsViews.parentContainer, windowWidth, windowHeight);
+        Scene scene = new Scene(UtilsViews.parentContainer, WINDOW_WIDTH, WINDOW_HEIGHT);
         stage.setScene(scene);
         stage.setTitle("Connecta 4 - JavaFX");
-        stage.setMinWidth(windowWidth);
-        stage.setMinHeight(windowHeight);
+        stage.setMinWidth(WINDOW_WIDTH);
+        stage.setMinHeight(WINDOW_HEIGHT);
         stage.show();
 
         // Icona (excepte macOS)
@@ -76,6 +78,8 @@ public class Main extends Application {
         if (wsClient != null) {
             wsClient.forceExit();
         }
+
+        UtilsViews.clearAllViews();
         Platform.exit(); // Millor que System.exit() en JavaFX
     }
 
@@ -101,6 +105,11 @@ public class Main extends Application {
 
             String wsUrl = protocol + "://" + host + ":" + port;
             wsClient = UtilsWS.getSharedInstance(wsUrl);
+
+            if (wsClient == null) {
+                showError("Error creat connexió WebSocket");
+            }
+            System.out.println("[INFO] Intentant connectar a: " + wsUrl);
 
             wsClient.onMessage(response -> Platform.runLater(() -> handleWebSocketMessage(response)));
             wsClient.onError(response -> Platform.runLater(() -> handleWebSocketError(response)));
@@ -165,13 +174,44 @@ public class Main extends Application {
             errorMsg = "No es pot connectar al servidor";
         }
         showError(errorMsg);
+        pauseDuring(2000, Main::resetViews);
     }
+
+    
 
     private static void showError(String message) {
         Platform.runLater(() -> {
             ctrlConfig.txtMessage.setTextFill(Color.RED);
             ctrlConfig.txtMessage.setText(message);
-            pauseDuring(2000, () -> ctrlConfig.txtMessage.setText(""));
+            pauseDuring(4000, () -> ctrlConfig.txtMessage.setText(""));
         });
     }
+
+    //Este método “reinicia” toda la aplicación visualmente
+    public static void resetViews() {
+        UtilsWS.clearSharedInstance();
+
+        try {
+            // Limpia todas las vistas cargadas
+            UtilsViews.clearAllViews();
+
+            // Carga nuevamente la vista de configuración
+            UtilsViews.addView(Main.class, "ViewConfig", "/assets/viewConfig.fxml");
+            ctrlConfig = (CtrlConfig) UtilsViews.getController("ViewConfig");
+
+            // Cambia a la vista de configuración
+            UtilsViews.setView("ViewConfig");
+
+            // Limpia variables del jugador
+            playerName = "";
+            wsClient = null;
+
+            System.out.println("[INFO] Vistas reiniciadas correctamente.");
+
+        } catch (Exception e) {
+            System.err.println("Error al reiniciar las vistas: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
 }
