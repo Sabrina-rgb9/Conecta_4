@@ -34,24 +34,32 @@ public class CtrlOpponentSelection implements Initializable {
         });
         
         // Inicializar estado
-        lblStatus.setText("Selecciona un oponente haciendo doble click");
+        lblStatus.setText("Cargando jugadores...");
     }
     
     public void updatePlayersList(GameState gameState) {
         if (gameState != null && gameState.getClientsList() != null) {
             listPlayers.getItems().clear();
+            
+            int availablePlayers = 0;
             for (ClientInfo client : gameState.getClientsList()) {
-                // Mostrar solo jugadores disponibles (sin partida en curso)
+                // Mostrar solo jugadores disponibles (no soy yo y no están en partida)
                 if (!client.getName().equals(Main.playerName)) {
                     listPlayers.getItems().add(client.getName());
+                    availablePlayers++;
                 }
             }
             
-            if (listPlayers.getItems().isEmpty()) {
-                lblStatus.setText("No hay jugadores disponibles");
+            if (availablePlayers == 0) {
+                lblStatus.setText("No hay jugadores disponibles. Esperando más conexiones...");
             } else {
-                lblStatus.setText(listPlayers.getItems().size() + " jugadores disponibles");
+                lblStatus.setText(availablePlayers + " jugador(es) disponible(s). Haz doble click para invitar.");
             }
+            
+            System.out.println("Actualizada lista: " + availablePlayers + " jugadores disponibles");
+        } else {
+            lblStatus.setText("Error cargando lista de jugadores");
+            System.err.println("GameState o clientsList es null");
         }
     }
     
@@ -63,6 +71,7 @@ public class CtrlOpponentSelection implements Initializable {
             
             Main.wsClient.safeSend(invitation.toString());
             lblStatus.setText("Invitación enviada a " + opponentName);
+            System.out.println("Invitación enviada a: " + opponentName);
         } catch (Exception e) {
             System.err.println("Error sending invitation: " + e.getMessage());
             lblStatus.setText("Error al enviar invitación");

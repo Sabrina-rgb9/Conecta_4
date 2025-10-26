@@ -81,7 +81,10 @@ public class Main extends Application {
                 connectMsg.put("type", "clientConnect");
                 connectMsg.put("playerName", playerName);
                 wsClient.safeSend(connectMsg.toString());
-                UtilsViews.setViewAnimating("ViewOpponentSelection");
+                
+                // CORRECCIÓN: Permanecer en ViewOpponentSelection, no cambiar a ViewWaitingRoom
+                // El servidor enviará serverData que determinará la vista correcta
+                System.out.println("Conectado al servidor, esperando lista de jugadores...");
             });
             
             wsClient.onMessage((message) -> {
@@ -247,16 +250,21 @@ public class Main extends Application {
             }
         }
         
+        // DEBUG: Mostrar qué está pasando
+        System.out.println("=== ACTUALIZANDO ESTADO ===");
+        System.out.println("Estado del juego: " + (gameState.getGame() != null ? gameState.getGame().getStatus() : "null"));
+        System.out.println("Vista actual: " + UtilsViews.getActiveView());
+        
         // Actualizar vista según estado del juego
         Platform.runLater(() -> {
             if (gameState.getGame() != null) {
                 String status = gameState.getGame().getStatus();
-                System.out.println("Estado del juego: " + status);
+                System.out.println("Cambiando a vista para estado: " + status);
                 
                 switch (status) {
                     case "waiting":
-                        UtilsViews.setView("ViewWaitingRoom");
-                        updateWaitingRoom(gameState);
+                        UtilsViews.setView("ViewOpponentSelection");
+                        updateOpponentSelection(gameState);
                         break;
                     case "countdown":
                         UtilsViews.setView("ViewCountdown");
@@ -272,12 +280,10 @@ public class Main extends Application {
                         updateResultView();
                         break;
                     default:
-                        // Si no hay partida o estado desconocido, mostrar selección de oponente
                         UtilsViews.setView("ViewOpponentSelection");
                         updateOpponentSelection(gameState);
                 }
             } else {
-                // Si no hay datos de juego, mostrar selección de oponente
                 UtilsViews.setView("ViewOpponentSelection");
                 updateOpponentSelection(gameState);
             }
@@ -287,7 +293,7 @@ public class Main extends Application {
     private static void handleInvitation(JSONObject invitation) {
         String fromPlayer = invitation.getString("from");
         String type = invitation.has("invitationType") ? 
-                     invitation.getString("invitationType") : "received";
+                    invitation.getString("invitationType") : "received";
         
         Platform.runLater(() -> {
             if ("received".equals(type)) {
@@ -297,15 +303,16 @@ public class Main extends Application {
                     selectionCtrl.handleIncomingInvitation(fromPlayer);
                 }
             } else if ("accepted".equals(type)) {
-                // El oponente aceptó nuestra invitación
-                UtilsViews.setViewAnimating("ViewWaitingRoom");
-                CtrlWaitingRoom waitingCtrl = (CtrlWaitingRoom) 
-                    UtilsViews.getController("ViewWaitingRoom");
-                if (waitingCtrl != null) {
-                    waitingCtrl.updateStatus("Invitación aceptada. Iniciando partida...");
+                // CORRECCIÓN: Cambiar a Countdown inmediatamente
+                System.out.println("Invitación ACEPTADA - Cambiando a countdown");
+                UtilsViews.setViewAnimating("ViewCountdown");
+                
+                CtrlCountdown countdownCtrl = (CtrlCountdown) 
+                    UtilsViews.getController("ViewCountdown");
+                if (countdownCtrl != null) {
+                    countdownCtrl.startCountdown(3);
                 }
             } else if ("rejected".equals(type)) {
-                // El oponente rechazó nuestra invitación
                 CtrlOpponentSelection selectionCtrl = (CtrlOpponentSelection) 
                     UtilsViews.getController("ViewOpponentSelection");
                 if (selectionCtrl != null) {
@@ -330,8 +337,16 @@ public class Main extends Application {
     
     private static void handleGameStart() {
         Platform.runLater(() -> {
+            System.out.println("Recibido gameStart - cambiando a vista de juego");
             UtilsViews.setViewAnimating("ViewGame");
-            // El estado del juego se actualizará con el primer serverData
+            
+            // Forzar una actualización del estado del juego
+            if (wsClient != null && wsClient.isOpen()) {
+                // Pedir el estado actual del juego al servidor
+                JSONObject request = new JSONObject();
+                request.put("type", "clientRequestState");
+                wsClient.safeSend(request.toString());
+            }
         });
     }
     
@@ -359,26 +374,41 @@ public class Main extends Application {
     }
     
     private static void updateOpponentSelection(GameState gameState) {
-        CtrlOpponentSelection selectionCtrl = (CtrlOpponentSelection) 
-            UtilsViews.getController("ViewOpponentSelection");
-        if (selectionCtrl != null) {
-            selectionCtrl.updatePlayersList(gameState);
-        }
+        Platform.runLater(() -> {
+            CtrlOpponentSelection selectionCtrl = (CtrlOpponentSelection) 
+                UtilsViews.getController("ViewOpponentSelection");
+            if (selectionCtrl != null) {
+                selectionCtrl.updatePlayersList(gameState);
+                
+                // Debug: mostrar información en consola
+                if (gameState != null && gameState.getClientsList() != null) {
+                    System.out.println("Jugadores recibidos: " + gameState.getClientsList().size());
+                    for (ClientInfo client : gameState.getClientsList()) {
+                        System.out.println(" - " + client.getName() + " (rol: " + client.getRole() + ")");
+                    }
+                } else {
+                    System.out.println("GameState o clientsList es null");
+                }
+            }
+        });
     }
     
     private static void updateWaitingRoom(GameState gameState) {
         CtrlWaitingRoom waitingCtrl = (CtrlWaitingRoom) 
             UtilsViews.getController("ViewWaitingRoom");
         if (waitingCtrl != null) {
+            // Solo mostrar sala de espera si hay una partida en proceso de inicio
             if (gameState != null && gameState.getGame() != null) {
                 String status = gameState.getGame().getStatus();
                 if ("waiting".equals(status)) {
-                    waitingCtrl.updateStatus("Esperando que el oponente acepte la invitación...");
+                    // Esto no debería pasar, pero por si acaso
+                    waitingCtrl.updateStatus("Esperando confirmación de partida...");
                 } else if ("countdown".equals(status)) {
                     waitingCtrl.updateStatus("Partida encontrada. Iniciando...");
                 }
             } else {
-                waitingCtrl.updateStatus("Conectando con el oponente...");
+                // Si no hay datos de juego, no deberíamos estar en waiting room
+                UtilsViews.setView("ViewOpponentSelection");
             }
         }
     }

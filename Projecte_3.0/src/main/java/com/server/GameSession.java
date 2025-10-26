@@ -22,6 +22,7 @@ public class GameSession {
     private boolean gameFinished = false;
     private String winner = "";
     private List<GameObject> gameObjects;
+    private boolean countdownInProgress = false; // NUEVO: para controlar el countdown
     
     // Constantes del juego
     private static final int ROWS = 6;
@@ -69,8 +70,14 @@ public class GameSession {
         this.player2 = player2;
         this.player2Name = player2Name;
         this.gameStarted = true;
+        this.countdownInProgress = true; // NUEVO: empezar countdown
         
-        // Enviar countdown a ambos jugadores
+        System.out.println("Partida iniciada: " + player1Name + " (R) vs " + player2Name + " (Y)");
+        
+        // Enviar estado INMEDIATAMENTE con status: "countdown"
+        broadcastGameState();
+        
+        // Luego iniciar countdown
         sendCountdown();
     }
     
@@ -92,11 +99,14 @@ public class GameSession {
     }
     
     private void startGame() {
-        JSONObject gameStartMsg = new JSONObject();
-        gameStartMsg.put("type", "gameStart");
-        broadcastToPlayers(gameStartMsg.toString());
+        // FINALIZAR COUNTDOWN E INICIAR JUEGO
+        this.countdownInProgress = false;
+        this.gameStarted = true; // Asegurar que gameStarted sea true
         
-        // Enviar estado inicial del juego
+        System.out.println("¡Iniciando partida! Turno de: " + currentTurn);
+        System.out.println("GameStarted: " + gameStarted + ", CountdownInProgress: " + countdownInProgress);
+        
+        // Enviar estado con status: "playing"
         broadcastGameState();
     }
     
@@ -213,7 +223,7 @@ public class GameSession {
         // Crear lista de clientes
         List<ClientInfo> clients = new ArrayList<>();
         
-        // Jugador 1
+        // Jugador 1 (Rojo)
         ClientInfo client1 = new ClientInfo();
         client1.setName(player1Name);
         client1.setColor("RED");
@@ -222,7 +232,7 @@ public class GameSession {
         client1.setMouseY(0);
         clients.add(client1);
         
-        // Jugador 2
+        // Jugador 2 (Amarillo)
         if (player2 != null) {
             ClientInfo client2 = new ClientInfo();
             client2.setName(player2Name);
@@ -238,13 +248,18 @@ public class GameSession {
         
         // Crear datos del juego
         GameData gameData = new GameData();
+        
+        // CORRECCIÓN: El estado debe mantenerse una vez establecido
         if (gameFinished) {
             if (winner.equals("draw")) {
                 gameData.setStatus("draw");
             } else {
                 gameData.setStatus("win");
             }
+        } else if (countdownInProgress) {
+            gameData.setStatus("countdown");
         } else if (gameStarted) {
+            // UNA VEZ QUE EL JUEGO HA EMPEZADO, SIEMPRE debe ser "playing" hasta que termine
             gameData.setStatus("playing");
         } else {
             gameData.setStatus("waiting");
@@ -254,8 +269,13 @@ public class GameSession {
         gameData.setTurn(currentTurn);
         gameData.setWinner(winner);
         
-        // Último movimiento (para animaciones)
-        // Esto se debería setear cuando se hace un movimiento
+        // DEBUG en servidor
+        System.out.println("=== SERVIDOR Enviando estado ===");
+        System.out.println("Sesión: " + sessionId);
+        System.out.println("Jugadores: " + player1Name + " vs " + player2Name);
+        System.out.println("GameStarted: " + gameStarted);
+        System.out.println("CountdownInProgress: " + countdownInProgress);
+        System.out.println("Estado enviado: " + gameData.getStatus());
         
         gameState.setGame(gameData);
         

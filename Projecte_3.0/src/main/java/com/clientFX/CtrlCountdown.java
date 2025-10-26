@@ -36,9 +36,10 @@ public class CtrlCountdown implements Initializable {
                 lblCountdown.setText(String.valueOf(count));
             } else {
                 lblCountdown.setText("¡GO!");
-                // Esperar un momento antes de que Main maneje la transición
+                // Esperar un momento y forzar cambio a juego
                 Main.pauseDuring(1000, () -> {
-                    // La transición se maneja automáticamente con serverData
+                    // Esto forzará al servidor a enviar el estado "playing"
+                    System.out.println("Countdown terminado - esperando estado playing...");
                 });
             }
         });
