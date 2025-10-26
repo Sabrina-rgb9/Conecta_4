@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane fx:id="anchor" minHeight="500.0" minWidth="600.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.clientFX.CtrlCountdown">
+   <children>
+      <VBox alignment="CENTER" spacing="20" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+         <children>
+            <Label text="La partida comenzará en:" alignment="CENTER">
+               <font>
+                  <Font size="18.0"/>
+               </font>
+            </Label>
+            
+            <Label fx:id="lblCountdown" text="3" alignment="CENTER">
+               <font>
+                  <Font size="72.0"/>
+               </font>
+            </Label>
+         </children>
+      </VBox>
+   </children>
+</AnchorPane>

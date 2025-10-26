@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane fx:id="anchor" minHeight="500.0" minWidth="600.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.clientFX.CtrlConfig">
+   <children>
+      <VBox alignment="CENTER" spacing="10" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+         <children>
+            <Label text="Server setup" alignment="CENTER">
+               <font>
+                  <Font size="36.0"/>
+               </font>
+               <VBox.margin>
+                  <Insets top="16.0"/>
+               </VBox.margin>
+            </Label>
+
+            <!-- Campo Nombre del jugador -->
+            <HBox alignment="CENTER" spacing="10">
+                <Label text="Jugador:"/>
+                <TextField fx:id="txtPlayerName" promptText="Nom del jugador" prefWidth="200"/>
+            </HBox>
+
+            <!-- Campo Protocolo -->
+            <HBox alignment="CENTER" spacing="10">
+                <Label text="Protocol:"/>
+                <TextField fx:id="txtProtocol" promptText="ws o wss" prefWidth="200"/>
+            </HBox>
+
+            <!-- Campo Host -->
+            <HBox alignment="CENTER" spacing="10">
+                <Label text="Server IP:"/>
+                <TextField fx:id="txtHost" promptText="localhost o IP" prefWidth="200"/>
+            </HBox>
+
+            <!-- Campo Port -->
+            <HBox alignment="CENTER" spacing="10">
+                <Label text="Port:"/>
+                <TextField fx:id="txtPort" promptText="3000" prefWidth="200"/>
+            </HBox>
+
+            <!-- Botón Conectar -->
+            <Button text="Connect" fx:id="btnConnect" onAction="#connectToServer" prefWidth="150"/>
+
+            <!-- Label para mensajes -->
+            <Label fx:id="txtMessage" textFill="RED"/>
+
+            <!-- Botones Local / Proxmox -->
+            <HBox alignment="CENTER" spacing="20">
+                <Button text="Local" onAction="#setConfigLocal" prefWidth="100"/>
+                <Button text="Proxmox" onAction="#setConfigProxmox" prefWidth="100"/>
+            </HBox>
+         </children>
+      </VBox>
+   </children>
+</AnchorPane>

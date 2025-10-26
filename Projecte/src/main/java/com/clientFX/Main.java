@@ -8,6 +8,8 @@ import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 /**
@@ -60,11 +62,11 @@ public class Main extends Application {
         ctrlGame = (CtrlGame) UtilsViews.getController("ViewGame");
         ctrlResult = (CtrlResult) UtilsViews.getController("ViewResult");
 
-        Scene scene = new Scene(UtilsViews.parentContainer, width, height);
+        Scene scene = new Scene(UtilsViews.parentContainer, windowWidth, windowHeight);
         stage.setScene(scene);
         stage.setTitle("Connecta 4 - JavaFX");
-        stage.setMinWidth(width);
-        stage.setMinHeight(height);
+        stage.setMinWidth(windowWidth);
+        stage.setMinHeight(windowHeight);
 
         // Icono (excepto macOS)
         if (!System.getProperty("os.name").toLowerCase().contains("mac")) {
