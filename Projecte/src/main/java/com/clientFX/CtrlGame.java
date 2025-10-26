@@ -10,7 +10,6 @@ import javafx.scene.control.Label;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
 import javafx.util.Duration;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -43,11 +42,9 @@ public class CtrlGame {
     private final int rows = 6;
     private final int cols = 7;
     private final double cellSize = 80;
-    private boolean dragging = false;
-    private Circle draggedPiece;
-    private double dragOffsetX, dragOffsetY;
-
-    private double mouseX = -1, mouseY = -1;
+    private int lastMoveRow = -1;
+    private int lastMoveCol = -1;
+    private Timeline dropAnimation;
 
     @FXML
     public void initialize() {
@@ -56,8 +53,6 @@ public class CtrlGame {
 
         canvas.setOnMouseMoved(this::handleHover);
         canvas.setOnMouseClicked(this::handleClick);
-        canvas.setOnMouseDragged(this::handleDrag);
-        canvas.setOnMouseReleased(this::handleRelease);
         canvas.widthProperty().addListener((obs, old, newVal) -> redraw());
         canvas.heightProperty().addListener((obs, old, newVal) -> redraw());
     }
@@ -243,5 +238,63 @@ public class CtrlGame {
                 }
             }
         }
+    }
+
+    private void drawAvailablePieces() {
+        // Limpiar
+        paneYourPieces.getChildren().clear();
+        paneOpponentPieces.getChildren().clear();
+
+        if (gameState == null) return;
+
+        // Contar fichas jugadas
+        int redPlayed = 0, yellowPlayed = 0;
+        JSONArray board = gameState.getJSONArray("board");
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                String v = board.getJSONArray(r).getString(c);
+                if ("R".equals(v)) redPlayed++;
+                else if ("Y".equals(v)) yellowPlayed++;
+            }
+        }
+
+        int yourRemaining = 21 - ("R".equals(role) ? redPlayed : yellowPlayed);
+        int oppRemaining = 21 - ("R".equals(role) ? yellowPlayed : redPlayed);
+
+        // Dibujar tus fichas
+        drawFichas(paneYourPieces, "R".equals(role) ? Color.RED : Color.YELLOW, yourRemaining, false);
+        // Dibujar fichas del rival (grisadas)
+        drawFichas(paneOpponentPieces, "R".equals(role) ? Color.YELLOW : Color.RED, oppRemaining, true);
+    }
+
+    private void drawFichas(Pane pane, Color color, int count, boolean disabled) {
+        double size = 30;
+        double margin = 5;
+        int cols = 4; // 4 fichas por fila
+
+        for (int i = 0; i < count; i++) {
+            javafx.scene.shape.Circle c = new javafx.scene.shape.Circle(size / 2);
+            c.setFill(disabled ? Color.LIGHTGRAY : color);
+            c.setStroke(Color.BLACK);
+            c.setStrokeWidth(1);
+
+            double x = margin + (i % cols) * (size + margin);
+            double y = margin + (i / cols) * (size + margin);
+
+            // ✅ Usa setLayoutX/Y (no translate)
+            c.setLayoutX(x);
+            c.setLayoutY(y);
+
+            pane.getChildren().add(c);
+        }
+    }
+
+    private String getPieceAt(int row, int col) {
+        if (gameState == null) return " ";
+        return gameState.getJSONArray("board").getJSONArray(row).getString(col);
+    }
+
+    private boolean isWinningCell(int row, int col) {
+        return "win".equals(gameState.getString("status"));
     }
 }

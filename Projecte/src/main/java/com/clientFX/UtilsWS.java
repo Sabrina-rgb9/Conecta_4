@@ -1,28 +1,28 @@
 package com.clientFX;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
-
+import javafx.application.Platform;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.drafts.Draft_6455;
 import org.java_websocket.handshake.ServerHandshake;
+
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 public class UtilsWS {
 
     private static UtilsWS sharedInstance = null;
     private WebSocketClient client;
-    private Consumer<String> onOpenCallBack = null;
-    private Consumer<String> onMessageCallBack = null;
-    private Consumer<String> onCloseCallBack = null;
-    private Consumer<String> onErrorCallBack = null;
-    private String location = "";
-    private static AtomicBoolean exitRequested = new AtomicBoolean(false);
-    private ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private final String location;
+    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private static final AtomicBoolean exitRequested = new AtomicBoolean(false);
+
+    private Consumer<String> onOpenCallBack;
+    private Consumer<String> onMessageCallBack;
+    private Consumer<String> onCloseCallBack;
+    private Consumer<String> onErrorCallBack;
 
     private UtilsWS(String location) {
         this.location = location;
@@ -32,117 +32,119 @@ public class UtilsWS {
     private void createNewWebSocketClient() {
         try {
             this.client = new WebSocketClient(new URI(location), new Draft_6455()) {
+
                 @Override
                 public void onOpen(ServerHandshake handshake) {
                     String message = "WS connected to: " + getURI();
                     System.out.println(message);
-                    if (onOpenCallBack != null) {
-                        onOpenCallBack.accept(message);
-                    }
+                    runLaterIfSet(onOpenCallBack, message);
                 }
 
                 @Override
                 public void onMessage(String message) {
-                    if (onMessageCallBack != null) {
-                        onMessageCallBack.accept(message);
-                    }
+                    runLaterIfSet(onMessageCallBack, message);
                 }
 
                 @Override
                 public void onClose(int code, String reason, boolean remote) {
-                    String message = "WS closed connection from: " + getURI() + " with reason: " + reason;
+                    String message = "WS closed: " + reason + " (remote=" + remote + ")";
                     System.out.println(message);
-                    if (onCloseCallBack != null) {
-                        onCloseCallBack.accept(message);
-                    }
-                    if (remote) {
+                    runLaterIfSet(onCloseCallBack, message);
+
+                    if (!exitRequested.get() && remote) {
                         scheduleReconnect();
                     }
                 }
 
                 @Override
                 public void onError(Exception e) {
-                    String message = "WS connection error: " + e.getMessage();
+                    String message = "WS error: " + e.getMessage();
                     System.out.println(message);
-                    if (onErrorCallBack != null) {
-                        onErrorCallBack.accept(message);
-                    }
-                    if (e.getMessage().contains("Connection refused") || e.getMessage().contains("Connection reset")) {
+                    runLaterIfSet(onErrorCallBack, message);
+
+                    if (!exitRequested.get() &&
+                        (message.contains("Connection refused") || message.contains("Connection reset"))) {
                         scheduleReconnect();
                     }
                 }
             };
+
             this.client.connect();
+
         } catch (URISyntaxException e) {
-            e.printStackTrace();
-            System.out.println("WS Error, " + location + " is not a valid URI");
+            System.err.println("WS Error: invalid URI -> " + location);
+        }
+    }
+
+    private void runLaterIfSet(Consumer<String> callback, String msg) {
+        if (callback != null) {
+            Platform.runLater(() -> callback.accept(msg));
         }
     }
 
     private void scheduleReconnect() {
         if (!exitRequested.get()) {
+            System.out.println("WS scheduling reconnect in 5 seconds...");
             scheduler.schedule(this::reconnect, 5, TimeUnit.SECONDS);
         }
     }
 
     private void reconnect() {
-        if (exitRequested.get()) {
-            return;
-        }
+        if (exitRequested.get()) return;
 
         System.out.println("WS reconnecting to: " + this.location);
 
-        if (client != null) {
-            client.close();
-        }
+        try {
+            if (client != null && client.isOpen()) {
+                client.closeBlocking();
+            }
+        } catch (Exception ignored) {}
+
         createNewWebSocketClient();
     }
 
+    // ---- Public methods ----
+
     public static UtilsWS getSharedInstance(String location) {
-        if (sharedInstance == null) {
+        if (sharedInstance == null || !sharedInstance.location.equals(location)) {
+            if (sharedInstance != null) {
+                sharedInstance.forceExit();
+            }
             sharedInstance = new UtilsWS(location);
         }
         return sharedInstance;
     }
 
-    public void onOpen(Consumer<String> callBack) {
-        this.onOpenCallBack = callBack;
-    }
+    public void onOpen(Consumer<String> callback) { this.onOpenCallBack = callback; }
 
-    public void onMessage(Consumer<String> callBack) {
-        this.onMessageCallBack = callBack;
-    }
+    public void onMessage(Consumer<String> callback) { this.onMessageCallBack = callback; }
 
-    public void onClose(Consumer<String> callBack) {
-        this.onCloseCallBack = callBack;
-    }
+    public void onClose(Consumer<String> callback) { this.onCloseCallBack = callback; }
 
-    public void onError(Consumer<String> callBack) {
-        this.onErrorCallBack = callBack;
-    }
+    public void onError(Consumer<String> callback) { this.onErrorCallBack = callback; }
 
     public void safeSend(String text) {
         try {
             if (client != null && client.isOpen()) {
                 client.send(text);
             } else {
-                System.out.println("WS Error: Client is not connected. Attempting to reconnect...");
+                System.out.println("WS Warning: not connected, scheduling reconnect...");
                 scheduleReconnect();
             }
         } catch (Exception e) {
-            System.out.println("WS Error sending message: " + e.getMessage());
+            System.err.println("WS Error sending message: " + e.getMessage());
         }
     }
 
     public void forceExit() {
-        System.out.println("WS Closing ...");
+        System.out.println("WS Closing...");
         exitRequested.set(true);
         try {
             if (client != null && !client.isClosed()) {
                 client.closeBlocking();
             }
         } catch (Exception e) {
-            System.out.println("WS Interrupted while closing WebSocket connection: " + e.getMessage());
+            System.out.println("WS Interrupted while closing: " + e.getMessage());
             Thread.currentThread().interrupt();
         } finally {
             scheduler.shutdownNow();
@@ -151,5 +153,13 @@ public class UtilsWS {
 
     public boolean isOpen() {
         return client != null && client.isOpen();
+    }
+
+    public static void clearSharedInstance() {
+        if (sharedInstance != null) {
+            sharedInstance.forceExit();
+            sharedInstance = null;
+            exitRequested.set(false);
+        }
     }
 }
