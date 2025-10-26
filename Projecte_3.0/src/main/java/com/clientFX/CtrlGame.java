@@ -1,4 +1,3 @@
-// com/clientFX/CtrlGame.java
 package com.clientFX;
 
 import javafx.fxml.FXML;
@@ -8,6 +7,7 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import com.shared.GameState;
+import com.shared.ClientInfo;
 import java.net.URL;
 import java.util.ResourceBundle;
 
@@ -23,6 +23,13 @@ public class CtrlGame implements Initializable {
     private static final int BOARD_OFFSET_X = 50;
     private static final int BOARD_OFFSET_Y = 50;
     
+    // Variables para tracking del mouse
+    private double myMouseX = 0;
+    private double myMouseY = 0;
+    private double opponentMouseX = 0;
+    private double opponentMouseY = 0;
+    private String opponentName = "";
+
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         gc = canvas.getGraphicsContext2D();
@@ -30,14 +37,25 @@ public class CtrlGame implements Initializable {
     }
     
     private void setupEventHandlers() {
+        // Trackear movimiento del mouse local
         canvas.setOnMouseMoved(this::handleMouseMove);
+        canvas.setOnMouseDragged(this::handleMouseMove);
+        
+        // Click para jugar (mantener funcionalidad existente)
         canvas.setOnMouseClicked(this::handleMouseClick);
-        canvas.setOnMouseDragged(this::handleMouseDrag);
     }
     
     private void handleMouseMove(MouseEvent event) {
-        // Enviar posición del mouse al servidor
-        Main.sendMouseMove(event.getX(), event.getY());
+        myMouseX = event.getX();
+        myMouseY = event.getY();
+        
+        // Enviar posición al servidor
+        Main.sendMouseMove(myMouseX, myMouseY);
+        
+        // Redibujar para actualizar cursores
+        if (Main.currentGameState != null) {
+            render(Main.currentGameState);
+        }
     }
     
     private void handleMouseClick(MouseEvent event) {
@@ -49,23 +67,66 @@ public class CtrlGame implements Initializable {
         }
     }
     
-    private void handleMouseDrag(MouseEvent event) {
-        // Implementar drag & drop para fichas
-        if (isMyTurn() && event.isPrimaryButtonDown()) {
-            // Lógica de arrastre visual
-        }
+    public void updateGameState(GameState gameState) {
+        // Actualizar posición del oponente
+        updateOpponentMousePosition(gameState);
+        
+        // Renderizar el juego
+        render(gameState);
     }
     
-    public void updateGameState(GameState gameState) {
-        render(gameState);
+    private void updateOpponentMousePosition(GameState gameState) {
+        if (gameState.getClientsList() != null) {
+            for (ClientInfo client : gameState.getClientsList()) {
+                if (!client.getName().equals(Main.playerName)) {
+                    opponentMouseX = client.getMouseX();
+                    opponentMouseY = client.getMouseY();
+                    opponentName = client.getName();
+                    break;
+                }
+            }
+        }
     }
     
     private void render(GameState gameState) {
         gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
         drawBoard();
         drawPieces(gameState);
-        drawHoverEffects(gameState);
+        drawMouseCursors();
+        drawHoverEffects();
         drawWinLine(gameState);
+    }
+    
+    private void drawMouseCursors() {
+        // Dibujar cursor local (verde)
+        drawCursor(myMouseX, myMouseY, Color.LIMEGREEN, "Tú");
+        
+        // Dibujar cursor del oponente (rojo) si está dentro del canvas
+        if (opponentMouseX > 0 && opponentMouseY > 0 && 
+            opponentMouseX < canvas.getWidth() && opponentMouseY < canvas.getHeight()) {
+            drawCursor(opponentMouseX, opponentMouseY, Color.RED, opponentName);
+        }
+    }
+    
+    private void drawCursor(double x, double y, Color color, String label) {
+        // Círculo del cursor
+        gc.setFill(color);
+        gc.fillOval(x - 5, y - 5, 10, 10);
+        
+        // Borde del cursor
+        gc.setStroke(Color.WHITE);
+        gc.setLineWidth(2);
+        gc.strokeOval(x - 5, y - 5, 10, 10);
+        
+        // Línea de referencia (opcional)
+        gc.setStroke(color.deriveColor(0, 1, 1, 0.5));
+        gc.setLineWidth(1);
+        gc.strokeLine(x, 0, x, canvas.getHeight());
+        gc.strokeLine(0, y, canvas.getWidth(), y);
+        
+        // Etiqueta con nombre
+        gc.setFill(color);
+        gc.fillText(label, x + 8, y - 8);
     }
     
     private void drawBoard() {
@@ -118,31 +179,22 @@ public class CtrlGame implements Initializable {
         gc.fillOval(x + radius/2, y + radius/2, radius, radius);
     }
     
-    private void drawHoverEffects(GameState gameState) {
-        // Dibujar hover del oponente
-        if (gameState.getClientsList() != null) {
-            for (var client : gameState.getClientsList()) {
-                if (!client.getName().equals(Main.playerName)) {
-                    drawOpponentCursor(client.getMouseX(), client.getMouseY());
-                }
+    private void drawHoverEffects() {
+        // Efecto de hover para columna (solo si es tu turno)
+        if (isMyTurn() && myMouseX >= BOARD_OFFSET_X && 
+            myMouseX <= BOARD_OFFSET_X + COLUMNS * CELL_SIZE) {
+            
+            int hoverColumn = getColumnFromX(myMouseX);
+            if (isValidColumn(hoverColumn)) {
+                gc.setFill(Color.rgb(0, 255, 0, 0.3));
+                gc.fillRect(hoverColumn * CELL_SIZE + BOARD_OFFSET_X, BOARD_OFFSET_Y, 
+                           CELL_SIZE, ROWS * CELL_SIZE);
             }
         }
-        
-        // Dibujar hover local si es nuestro turno
-        if (isMyTurn()) {
-            // Resaltar columna bajo el cursor
-        }
-    }
-    
-    private void drawOpponentCursor(double x, double y) {
-        gc.setFill(Color.BLACK);
-        gc.fillOval(x - 5, y - 5, 10, 10);
-        gc.setStroke(Color.WHITE);
-        gc.strokeOval(x - 5, y - 5, 10, 10);
     }
     
     private void drawWinLine(GameState gameState) {
-        // Implementar línea para mostrar 4 en línea ganador
+        // Implementar línea de victoria si es necesario
     }
     
     private int getColumnFromX(double x) {

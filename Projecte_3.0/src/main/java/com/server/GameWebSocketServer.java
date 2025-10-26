@@ -89,6 +89,12 @@ public class GameWebSocketServer extends WebSocketServer {
                 case "clientMouseMoving":
                     handleClientMouseMoving(conn, jsonMessage);
                     break;
+                case "clientBackToLobby":  // NUEVO: Volver al lobby
+                    handleClientBackToLobby(conn, jsonMessage);
+                    break;
+                case "clientExit":  // NUEVO: Salir
+                    handleClientExit(conn, jsonMessage);
+                    break;
                 default:
                     System.out.println("Tipo de mensaje desconocido: " + type);
             }
@@ -289,6 +295,9 @@ public class GameWebSocketServer extends WebSocketServer {
             
             inviterConn.send(rejectedMsg.toString());
             System.out.println("Invitación rechazada: " + fromPlayer + " por " + playerName);
+            
+            // El que rechaza se queda en OpponentSelection
+            // El invitador recibirá el mensaje y volverá a OpponentSelection
         }
     }
     
@@ -303,16 +312,68 @@ public class GameWebSocketServer extends WebSocketServer {
             }
         }
     }
+
+    private void handleClientBackToLobby(WebSocket conn, JSONObject message) {
+        String playerName = connectedClients.get(conn);
+        String sessionId = clientToSession.get(conn);
+        
+        System.out.println("Jugador " + playerName + " volviendo al lobby");
+        
+        // Remover de la sesión de juego
+        if (sessionId != null) {
+            GameSession session = gameSessions.get(sessionId);
+            if (session != null) {
+                session.removePlayer(conn);
+                // Si la sesión queda vacía, eliminarla
+                if (!session.hasTwoPlayers()) {
+                    gameSessions.remove(sessionId);
+                    System.out.println("Sesión " + sessionId + " eliminada");
+                }
+            }
+            clientToSession.remove(conn);
+        }
+        
+        // Enviar estado actualizado (sin sesión de juego)
+        sendGameStateToClient(conn);
+        broadcastPlayerList();
+    }
+
+    private void handleClientExit(WebSocket conn, JSONObject message) {
+        String playerName = connectedClients.get(conn);
+        System.out.println("Jugador " + playerName + " saliendo");
+        
+        // Remover de sesión si está en una
+        handleClientBackToLobby(conn, message);
+        
+        // El cierre de conexión se manejará en onClose
+    }
     
     private void handleClientMouseMoving(WebSocket conn, JSONObject message) {
-        // Implementar tracking de mouse para mostrar posición del oponente
         double x = message.getDouble("x");
         double y = message.getDouble("y");
         
+        String playerName = connectedClients.get(conn);
         String sessionId = clientToSession.get(conn);
+        
         if (sessionId != null) {
-            // Aquí podrías enviar la posición del mouse al oponente
-            // para mostrar el cursor en tiempo real
+            // Actualizar posición del mouse en la sesión de juego
+            GameSession session = gameSessions.get(sessionId);
+            if (session != null) {
+                session.updatePlayerMousePosition(playerName, x, y);
+            }
+        } else {
+            // Actualizar posición del mouse global (fuera de partida)
+            updatePlayerMousePosition(playerName, x, y);
+        }
+    }
+
+    private void updatePlayerMousePosition(String playerName, double x, double y) {
+        // Buscar la conexión del jugador y actualizar su posición en todas las sesiones donde esté
+        for (Map.Entry<String, GameSession> entry : gameSessions.entrySet()) {
+            GameSession session = entry.getValue();
+            if (session.hasPlayerWithName(playerName)) {
+                session.updatePlayerMousePosition(playerName, x, y);
+            }
         }
     }
     

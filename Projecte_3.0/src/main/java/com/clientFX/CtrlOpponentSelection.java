@@ -34,35 +34,49 @@ public class CtrlOpponentSelection implements Initializable {
         });
         
         // Inicializar estado
-        lblStatus.setText("Cargando jugadores...");
+        lblStatus.setText("Conectando al servidor...");
     }
     
     public void updatePlayersList(GameState gameState) {
-        if (gameState != null && gameState.getClientsList() != null) {
-            listPlayers.getItems().clear();
-            
-            int availablePlayers = 0;
-            for (ClientInfo client : gameState.getClientsList()) {
-                // Mostrar solo jugadores disponibles (no soy yo y no están en partida)
-                if (!client.getName().equals(Main.playerName)) {
-                    listPlayers.getItems().add(client.getName());
-                    availablePlayers++;
-                }
-            }
-            
-            if (availablePlayers == 0) {
-                lblStatus.setText("No hay jugadores disponibles. Esperando más conexiones...");
-            } else {
-                lblStatus.setText(availablePlayers + " jugador(es) disponible(s). Haz doble click para invitar.");
-            }
-            
-            System.out.println("Actualizada lista: " + availablePlayers + " jugadores disponibles");
-        } else {
-            lblStatus.setText("Error cargando lista de jugadores");
-            System.err.println("GameState o clientsList es null");
+        System.out.println("Actualizando lista de jugadores...");
+        
+        if (gameState == null) {
+            lblStatus.setText("Error: datos del juego no disponibles");
+            return;
         }
+        
+        if (gameState.getClientsList() == null) {
+            lblStatus.setText("No hay jugadores conectados");
+            listPlayers.getItems().clear();
+            return;
+        }
+        
+        // Limpiar la lista actual
+        listPlayers.getItems().clear();
+        
+        int availablePlayers = 0;
+        for (ClientInfo client : gameState.getClientsList()) {
+            String clientName = client.getName();
+            
+            // Solo mostrar jugadores que no sean yo mismo
+            if (clientName != null && !clientName.equals(Main.playerName)) {
+                listPlayers.getItems().add(clientName);
+                availablePlayers++;
+                System.out.println("Añadido jugador: " + clientName);
+            }
+        }
+        
+        // Actualizar el mensaje de estado
+        if (availablePlayers == 0) {
+            lblStatus.setText("No hay otros jugadores conectados");
+        } else {
+            lblStatus.setText(availablePlayers + " jugador(es) disponible(s). Haz doble click para invitar.");
+        }
+        
+        System.out.println("Lista actualizada. Jugadores disponibles: " + availablePlayers);
     }
     
+    // En CtrlOpponentSelection.java, en sendInvitation:
     private void sendInvitation(String opponentName) {
         try {
             JSONObject invitation = new JSONObject();
@@ -70,8 +84,22 @@ public class CtrlOpponentSelection implements Initializable {
             invitation.put("opponent", opponentName);
             
             Main.wsClient.safeSend(invitation.toString());
-            lblStatus.setText("Invitación enviada a " + opponentName);
-            System.out.println("Invitación enviada a: " + opponentName);
+            
+            // Marcar invitación pendiente
+            Main.invitationPending = true;
+            Main.pendingOpponent = opponentName;
+            
+            // Iniciar timeout
+            Main.startInvitationTimeout(opponentName);
+            
+            System.out.println("Invitación enviada a " + opponentName + ". Cambiando a sala de espera...");
+            UtilsViews.setViewAnimating("ViewWaitingRoom");
+            
+            CtrlWaitingRoom waitingCtrl = (CtrlWaitingRoom) UtilsViews.getController("ViewWaitingRoom");
+            if (waitingCtrl != null) {
+                waitingCtrl.updateStatus("Invitación enviada a " + opponentName + ". Esperando respuesta...");
+            }
+            
         } catch (Exception e) {
             System.err.println("Error sending invitation: " + e.getMessage());
             lblStatus.setText("Error al enviar invitación");
@@ -87,7 +115,12 @@ public class CtrlOpponentSelection implements Initializable {
         alert.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
                 Main.acceptInvitation(fromPlayer);
-                updateStatus("Aceptada invitación de " + fromPlayer);
+                // El que acepta también va a sala de espera
+                UtilsViews.setViewAnimating("ViewWaitingRoom");
+                CtrlWaitingRoom waitingCtrl = (CtrlWaitingRoom) UtilsViews.getController("ViewWaitingRoom");
+                if (waitingCtrl != null) {
+                    waitingCtrl.updateStatus("Aceptada invitación de " + fromPlayer + ". Iniciando partida...");
+                }
             } else {
                 Main.rejectInvitation(fromPlayer);
                 updateStatus("Rechazada invitación de " + fromPlayer);

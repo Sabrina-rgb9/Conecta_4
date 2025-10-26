@@ -1,4 +1,3 @@
-// com/clientFX/CtrlWaitingRoom.java
 package com.clientFX;
 
 import javafx.fxml.FXML;
@@ -18,7 +17,8 @@ public class CtrlWaitingRoom implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        lblStatus.setText("Esperando contrincante...");
+        lblStatus.setText("Conectando...");
+        progressIndicator.setVisible(true);
     }
     
     public void updateStatus(String status) {

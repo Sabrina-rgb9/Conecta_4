@@ -4,6 +4,8 @@ import org.java_websocket.WebSocket;
 import org.json.JSONObject;
 import org.json.JSONArray;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.shared.GameState;
 import com.shared.ClientInfo;
 import com.shared.GameObject;
@@ -22,7 +24,9 @@ public class GameSession {
     private boolean gameFinished = false;
     private String winner = "";
     private List<GameObject> gameObjects;
-    private boolean countdownInProgress = false; // NUEVO: para controlar el countdown
+    private boolean countdownInProgress = false;
+
+    private Map<String, double[]> playerMousePositions = new ConcurrentHashMap<>();
     
     // Constantes del juego
     private static final int ROWS = 6;
@@ -35,6 +39,9 @@ public class GameSession {
         this.currentTurn = player1Name;
         initializeBoard();
         initializeGameObjects();
+        
+        // Inicializar posición del mouse del jugador 1
+        playerMousePositions.put(player1Name, new double[]{0, 0});
     }
     
     private void initializeBoard() {
@@ -49,7 +56,7 @@ public class GameSession {
     private void initializeGameObjects() {
         gameObjects = new ArrayList<>();
         // Crear fichas para los jugadores
-        for (int i = 0; i < 21; i++) { // 21 fichas por jugador
+        for (int i = 0; i < 21; i++) {
             GameObject redPiece = new GameObject();
             redPiece.setId("R_" + i);
             redPiece.setX(610.0 + (i % 7) * 60);
@@ -70,7 +77,10 @@ public class GameSession {
         this.player2 = player2;
         this.player2Name = player2Name;
         this.gameStarted = true;
-        this.countdownInProgress = true; // NUEVO: empezar countdown
+        this.countdownInProgress = true;
+        
+        // Inicializar posición del mouse del jugador 2
+        playerMousePositions.put(player2Name, new double[]{0, 0});
         
         System.out.println("Partida iniciada: " + player1Name + " (R) vs " + player2Name + " (Y)");
         
@@ -79,6 +89,21 @@ public class GameSession {
         
         // Luego iniciar countdown
         sendCountdown();
+    }
+    
+    // NUEVO MÉTODO: Actualizar posición del mouse de un jugador
+    public void updatePlayerMousePosition(String playerName, double x, double y) {
+        if (playerMousePositions.containsKey(playerName)) {
+            playerMousePositions.put(playerName, new double[]{x, y});
+            System.out.println("Mouse actualizado - " + playerName + ": (" + x + ", " + y + ")");
+            // Enviar update a ambos jugadores
+            broadcastGameState();
+        }
+    }
+    
+    // NUEVO MÉTODO: Verificar si un jugador está en esta sesión
+    public boolean hasPlayerWithName(String playerName) {
+        return player1Name.equals(playerName) || (player2Name != null && player2Name.equals(playerName));
     }
     
     private void sendCountdown() {
@@ -95,16 +120,14 @@ public class GameSession {
             public void run() {
                 startGame();
             }
-        }, 4000); // 3 segundos de countdown + 1 segundo extra
+        }, 4000);
     }
     
     private void startGame() {
-        // FINALIZAR COUNTDOWN E INICIAR JUEGO
         this.countdownInProgress = false;
-        this.gameStarted = true; // Asegurar que gameStarted sea true
+        this.gameStarted = true;
         
         System.out.println("¡Iniciando partida! Turno de: " + currentTurn);
-        System.out.println("GameStarted: " + gameStarted + ", CountdownInProgress: " + countdownInProgress);
         
         // Enviar estado con status: "playing"
         broadcastGameState();
@@ -130,11 +153,6 @@ public class GameSession {
         // Hacer el movimiento
         String piece = playerName.equals(player1Name) ? "R" : "Y";
         board[row][column] = piece;
-        
-        // Crear último movimiento para animación
-        Move lastMove = new Move();
-        lastMove.setCol(column);
-        lastMove.setRow(row);
         
         // Verificar victoria
         if (checkWin(row, column, piece)) {
@@ -228,8 +246,12 @@ public class GameSession {
         client1.setName(player1Name);
         client1.setColor("RED");
         client1.setRole("R");
-        client1.setMouseX(0);
-        client1.setMouseY(0);
+        
+        // Obtener posición del mouse del jugador 1
+        double[] pos1 = playerMousePositions.get(player1Name);
+        client1.setMouseX(pos1 != null ? pos1[0] : 0);
+        client1.setMouseY(pos1 != null ? pos1[1] : 0);
+        
         clients.add(client1);
         
         // Jugador 2 (Amarillo)
@@ -238,8 +260,12 @@ public class GameSession {
             client2.setName(player2Name);
             client2.setColor("YELLOW");
             client2.setRole("Y");
-            client2.setMouseX(0);
-            client2.setMouseY(0);
+            
+            // Obtener posición del mouse del jugador 2
+            double[] pos2 = playerMousePositions.get(player2Name);
+            client2.setMouseX(pos2 != null ? pos2[0] : 0);
+            client2.setMouseY(pos2 != null ? pos2[1] : 0);
+            
             clients.add(client2);
         }
         
@@ -249,7 +275,6 @@ public class GameSession {
         // Crear datos del juego
         GameData gameData = new GameData();
         
-        // CORRECCIÓN: El estado debe mantenerse una vez establecido
         if (gameFinished) {
             if (winner.equals("draw")) {
                 gameData.setStatus("draw");
@@ -259,7 +284,6 @@ public class GameSession {
         } else if (countdownInProgress) {
             gameData.setStatus("countdown");
         } else if (gameStarted) {
-            // UNA VEZ QUE EL JUEGO HA EMPEZADO, SIEMPRE debe ser "playing" hasta que termine
             gameData.setStatus("playing");
         } else {
             gameData.setStatus("waiting");
@@ -268,14 +292,6 @@ public class GameSession {
         gameData.setBoard(board);
         gameData.setTurn(currentTurn);
         gameData.setWinner(winner);
-        
-        // DEBUG en servidor
-        System.out.println("=== SERVIDOR Enviando estado ===");
-        System.out.println("Sesión: " + sessionId);
-        System.out.println("Jugadores: " + player1Name + " vs " + player2Name);
-        System.out.println("GameStarted: " + gameStarted);
-        System.out.println("CountdownInProgress: " + countdownInProgress);
-        System.out.println("Estado enviado: " + gameData.getStatus());
         
         gameState.setGame(gameData);
         
@@ -286,7 +302,6 @@ public class GameSession {
         try {
             JSONObject json = new JSONObject();
             json.put("type", "serverData");
-            json.put("clientName", gameState.getClientName());
             
             // Clients list
             JSONArray clientsArray = new JSONArray();
@@ -329,20 +344,12 @@ public class GameSession {
                     for (String[] row : board) {
                         JSONArray rowArray = new JSONArray();
                         for (String cell : row) {
-                            rowArray.put(cell);
+                            rowArray.put(cell != null ? cell : " ");
                         }
                         boardArray.put(rowArray);
                     }
                 }
                 gameJson.put("board", boardArray);
-                
-                // Last move
-                if (gameData.getLastMove() != null) {
-                    JSONObject moveJson = new JSONObject();
-                    moveJson.put("col", gameData.getLastMove().getCol());
-                    moveJson.put("row", gameData.getLastMove().getRow());
-                    gameJson.put("lastMove", moveJson);
-                }
                 
                 json.put("game", gameJson);
             }
@@ -350,7 +357,7 @@ public class GameSession {
             return json.toString();
         } catch (Exception e) {
             System.err.println("Error converting GameState to JSON: " + e.getMessage());
-            return "{}";
+            return "{\"type\":\"serverData\",\"clientsList\":[],\"game\":{\"status\":\"waiting\"}}";
         }
     }
     
