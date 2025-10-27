@@ -2,37 +2,47 @@ package com.clientFX;
 
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
+import org.json.JSONObject;
+
 import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.function.Consumer;
 
 public class WSClient extends WebSocketClient {
-    private final CtrlGame controller;
 
-    public WSClient(URI serverUri, CtrlGame controller) {
-        super(serverUri);
-        this.controller = controller;
+    private Consumer<JSONObject> onMessageCallback;
+
+    public WSClient(String serverUri) throws URISyntaxException {
+        super(new URI(serverUri));
+    }
+
+    public void setOnMessageCallback(Consumer<JSONObject> callback) {
+        this.onMessageCallback = callback;
     }
 
     @Override
-    public void onOpen(ServerHandshake handshake) {
-        System.out.println("Conectado al servidor");
+    public void onOpen(ServerHandshake handshakedata) {
+        System.out.println("✅ Conectado al servidor");
     }
 
     @Override
     public void onMessage(String message) {
-        controller.handleMessage(new org.json.JSONObject(message));
+        if (onMessageCallback != null) {
+            onMessageCallback.accept(new JSONObject(message));
+        }
     }
 
     @Override
     public void onClose(int code, String reason, boolean remote) {
-        System.out.println("Conexión cerrada: " + reason);
+        System.out.println("⚠️ Conexión cerrada: " + reason);
     }
 
     @Override
     public void onError(Exception ex) {
-        ex.printStackTrace();
+        System.err.println("❌ Error WS: " + ex.getMessage());
     }
 
-    public void safeSend(String msg){
-        if(isOpen()) send(msg);
+    public void sendJSON(JSONObject json) {
+        if (isOpen()) send(json.toString());
     }
 }
