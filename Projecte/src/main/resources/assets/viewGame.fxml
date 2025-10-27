@@ -4,68 +4,69 @@
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.TilePane?>
 <?import javafx.scene.text.Font?>
-<?import javafx.scene.layout.Pane?>
 
 <AnchorPane xmlns="http://javafx.com/javafx/19"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.clientFX.CtrlGame"
             minWidth="950.0" minHeight="650.0">
-    <children>
-        <!-- Título -->
-        <Label text="Connecta 4" 
-               AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0"
-               AnchorPane.topAnchor="10.0" alignment="CENTER">
-            <font>
-                <Font size="32.0"/>
-            </font>
-        </Label>
 
-        <!-- Panel superior: Jugadores y turno -->
-        <HBox alignment="CENTER" spacing="30" 
-              AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="20.0" 
-              AnchorPane.topAnchor="60.0" minHeight="60">
-            <VBox alignment="CENTER">
-                <Label text="Tu:" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
-                <Label fx:id="lblPlayerName" text="---" 
-                       style="-fx-font-size: 16px; -fx-text-fill: black;"/>
-                <Label fx:id="lblYourRole" text="(R)" 
-                       style="-fx-font-size: 14px; -fx-text-fill: red;"/>
-            </VBox>
-            <Label text="VS" style="-fx-font-weight: bold; -fx-font-size: 18px;"/>
-            <VBox alignment="CENTER">
-                <Label text="Oponent:" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
-                <Label fx:id="lblOpponentName" text="---" 
-                       style="-fx-font-size: 16px; -fx-text-fill: black;"/>
-                <Label fx:id="lblOpponentRole" text="(Y)" 
-                       style="-fx-font-size: 14px; -fx-text-fill: yellow;"/>
-            </VBox>
-            <VBox alignment="CENTER">
-                <Label text="Torn:" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
-                <Label fx:id="lblTurnIndicator" text="Esperant..." 
-                       style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: gray; -fx-font-style: italic;"/>
-            </VBox>
-        </HBox>
+    <!-- Título -->
+    <Label text="Connecta 4"
+           AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0"
+           AnchorPane.topAnchor="10.0" alignment="CENTER">
+        <font>
+            <Font name="Arial" size="32.0"/>
+        </font>
+    </Label>
 
-        <!-- Contenedor: Tablero + Fichas -->
-        <HBox spacing="20" 
-              AnchorPane.topAnchor="140.0"
-              AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="20.0">
-            <!-- Tablero -->
-            <Canvas fx:id="canvas" width="560" height="480"/>
+    <!-- Panel superior: Jugadores y turno -->
+    <HBox alignment="CENTER" spacing="30"
+          AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="20.0"
+          AnchorPane.topAnchor="60.0" minHeight="60">
+        <VBox alignment="CENTER">
+            <Label text="Tu:" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+            <Label fx:id="lblPlayerName" text="---"
+                   style="-fx-font-size: 16px; -fx-text-fill: black;"/>
+            <Label fx:id="lblYourRole" text="(R)"
+                   style="-fx-font-size: 14px; -fx-text-fill: red;"/>
+        </VBox>
+        <Label text="VS" style="-fx-font-weight: bold; -fx-font-size: 18px;"/>
+        <VBox alignment="CENTER">
+            <Label text="Oponente:" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+            <Label fx:id="lblOpponentName" text="---"
+                   style="-fx-font-size: 16px; -fx-text-fill: black;"/>
+            <Label fx:id="lblOpponentRole" text="(Y)"
+                   style="-fx-font-size: 14px; -fx-text-fill: yellow;"/>
+        </VBox>
+        <VBox alignment="CENTER">
+            <Label text="Turno:" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+            <Label fx:id="lblTurnIndicator" text="Esperando..."
+                   style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: gray; -fx-font-style: italic;"/>
+        </VBox>
+    </HBox>
 
-            <!-- Panel de fichas disponibles -->
-            <VBox spacing="10" alignment="TOP_CENTER">
-                <Label text="Les teves fitxes" style="-fx-font-weight: bold;"/>
-                <Pane fx:id="paneYourPieces" prefWidth="120" prefHeight="240" style="-fx-border-color: gray; -fx-border-width: 1;"/>
-                
-                <Label text="Fitxes rival" style="-fx-font-weight: bold; -fx-text-fill: gray;"/>
-                <Pane fx:id="paneOpponentPieces" prefWidth="120" prefHeight="240" style="-fx-border-color: lightgray; -fx-border-width: 1;"/>
-            </VBox>
-        </HBox>
+    <!-- Contenedor: Tablero + Fichas -->
+    <HBox spacing="20"
+          AnchorPane.topAnchor="140.0"
+          AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="20.0">
+        
+        <!-- Tablero -->
+        <Canvas fx:id="canvasBoard" width="560" height="480"/>
 
-        <Label text="Arrossega una fitxa a una columna"
-               AnchorPane.leftAnchor="20.0" AnchorPane.bottomAnchor="20.0"
-               textFill="#555555"/>
-    </children>
+        <!-- Panel de fichas disponibles -->
+        <VBox spacing="10" alignment="TOP_CENTER">
+            <Label text="Tus fichas" style="-fx-font-weight: bold;"/>
+            <TilePane fx:id="tileYourPieces" prefColumns="3" prefRows="7" prefTileWidth="30" prefTileHeight="30" hgap="5" vgap="5" style="-fx-border-color: gray; -fx-border-width: 1;"/>
+
+            <Label text="Fichas del rival" style="-fx-font-weight: bold; -fx-text-fill: gray;"/>
+            <TilePane fx:id="tileOpponentPieces" prefColumns="3" prefRows="7" prefTileWidth="30" prefTileHeight="30" hgap="5" vgap="5" style="-fx-border-color: lightgray; -fx-border-width: 1;"/>
+        </VBox>
+    </HBox>
+
+    <!-- Instrucción -->
+    <Label text="Arrastra una ficha a una columna"
+           AnchorPane.leftAnchor="20.0" AnchorPane.bottomAnchor="20.0"
+           textFill="#555555"/>
 </AnchorPane>
