@@ -4,8 +4,6 @@
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.layout.TilePane?>
-<?import javafx.scene.text.Font?>
 
 <AnchorPane xmlns="http://javafx.com/javafx/19"
             xmlns:fx="http://javafx.com/fxml/1"
@@ -27,23 +25,18 @@
           AnchorPane.topAnchor="60.0" minHeight="60">
         <VBox alignment="CENTER">
             <Label text="Tu:" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
-            <Label fx:id="lblPlayerName" text="---"
-                   style="-fx-font-size: 16px; -fx-text-fill: black;"/>
-            <Label fx:id="lblYourRole" text="(R)"
-                   style="-fx-font-size: 14px; -fx-text-fill: red;"/>
+            <Label fx:id="lblPlayerName" text="---" style="-fx-font-size: 16px;"/>
+            <Label fx:id="lblYourRole" text="(R)" style="-fx-font-size: 14px;"/>
         </VBox>
         <Label text="VS" style="-fx-font-weight: bold; -fx-font-size: 18px;"/>
         <VBox alignment="CENTER">
             <Label text="Oponente:" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
-            <Label fx:id="lblOpponentName" text="---"
-                   style="-fx-font-size: 16px; -fx-text-fill: black;"/>
-            <Label fx:id="lblOpponentRole" text="(Y)"
-                   style="-fx-font-size: 14px; -fx-text-fill: yellow;"/>
+            <Label fx:id="lblOpponentName" text="---" style="-fx-font-size: 16px;"/>
+            <Label fx:id="lblOpponentRole" text="(Y)" style="-fx-font-size: 14px;"/>
         </VBox>
         <VBox alignment="CENTER">
             <Label text="Turno:" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
-            <Label fx:id="lblTurnIndicator" text="Esperando..."
-                   style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: gray; -fx-font-style: italic;"/>
+            <Label fx:id="lblTurnIndicator" text="Esperando..." style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
         </VBox>
     </HBox>
 
@@ -58,10 +51,10 @@
         <!-- Panel de fichas disponibles -->
         <VBox spacing="10" alignment="TOP_CENTER">
             <Label text="Tus fichas" style="-fx-font-weight: bold;"/>
-            <TilePane fx:id="tileYourPieces" prefColumns="3" prefRows="7" prefTileWidth="30" prefTileHeight="30" hgap="5" vgap="5" style="-fx-border-color: gray; -fx-border-width: 1;"/>
+            <VBox fx:id="paneYourPieces" spacing="5"/>
 
             <Label text="Fichas del rival" style="-fx-font-weight: bold; -fx-text-fill: gray;"/>
-            <TilePane fx:id="tileOpponentPieces" prefColumns="3" prefRows="7" prefTileWidth="30" prefTileHeight="30" hgap="5" vgap="5" style="-fx-border-color: lightgray; -fx-border-width: 1;"/>
+            <VBox fx:id="paneOpponentPieces" spacing="5"/>
         </VBox>
     </HBox>
 
