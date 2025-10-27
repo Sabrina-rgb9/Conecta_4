@@ -53,7 +53,7 @@
           AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="20.0">
         
         <!-- Tablero -->
-        <Canvas fx:id="canvasBoard" width="560" height="480"/>
+        <Canvas fx:id="canvas" width="560" height="480"/>
 
         <!-- Panel de fichas disponibles -->
         <VBox spacing="10" alignment="TOP_CENTER">
