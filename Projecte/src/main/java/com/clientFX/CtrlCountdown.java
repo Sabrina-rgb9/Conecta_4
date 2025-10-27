@@ -6,15 +6,15 @@ import org.json.JSONObject;
 
 public class CtrlCountdown {
 
-    @FXML
-    private Label lblCountdown;
+    @FXML private Label lblCountdown;
 
-    public CtrlCountdown() {}
+    public void initialize() {
+        if (lblCountdown != null) lblCountdown.setText("");
+    }
 
     public void handleMessage(JSONObject msg) {
-        if (msg.has("count")) {
-            int count = msg.getInt("count");
-            lblCountdown.setText(String.valueOf(count));
-        }
+        // Tu servidor usa "count" o "seconds". Aceptamos ambos.
+        int seconds = msg.optInt("count", msg.optInt("seconds", -1));
+        if (seconds >= 0) lblCountdown.setText(String.valueOf(seconds));
     }
 }

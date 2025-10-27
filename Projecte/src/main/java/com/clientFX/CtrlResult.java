@@ -6,21 +6,28 @@ import org.json.JSONObject;
 
 public class CtrlResult {
 
-    @FXML
-    private Label lblResult;
-
-    public CtrlResult() {}
+    @FXML private Label lblResult;
 
     public void handleMessage(JSONObject msg) {
-        if (msg.has("winner")) {
-            String winner = msg.getString("winner");
-            if ("draw".equals(winner)) {
-                lblResult.setText("Empate!");
-            } else if (winner.equals(Main.playerName)) {
-                lblResult.setText("¡Has ganado!");
+        String type = msg.optString("type", "");
+        if ("gameResult".equals(type)) {
+            String result = msg.optString("result", "");
+            if ("win".equals(result)) {
+                String winner = msg.optString("winner", "");
+                if (winner.equals(Main.playerName)) lblResult.setText("¡Has ganado!");
+                else lblResult.setText("Has perdido. Ganador: " + winner);
+            } else if ("draw".equals(result)) {
+                lblResult.setText("Empate");
             } else {
-                lblResult.setText("Has perdido. Ganador: " + winner);
+                lblResult.setText("Resultado: " + result);
             }
+        } else if (msg.has("winner")) {
+            String winner = msg.optString("winner", "");
+            if ("draw".equalsIgnoreCase(winner)) lblResult.setText("Empate");
+            else if (winner.equals(Main.playerName)) lblResult.setText("¡Has ganado!");
+            else lblResult.setText("Ha ganado: " + winner);
+        } else {
+            lblResult.setText("Resultado desconocido");
         }
     }
 }
