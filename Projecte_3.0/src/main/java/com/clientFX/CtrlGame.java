@@ -198,6 +198,8 @@ public class CtrlGame implements Initializable {
             
             myMouseX = canvasCoords.getX();
             myMouseY = canvasCoords.getY();
+
+            
             
             // ENVÍO MÁS FRECUENTE - sin esperar al render
             sendDragInfo(true, myMouseX, myMouseY, draggedPieceColor);
@@ -231,6 +233,11 @@ public class CtrlGame implements Initializable {
                 msg.put("y", y);
                 msg.put("pieceColor", color);
                 Main.wsClient.safeSend(msg.toString());
+                
+                // DEBUG: Ver frecuencia de envío
+                if (dragging) {
+                    System.out.println("📤 Enviando drag: " + x + "," + y);
+                }
             } catch (Exception e) {
                 System.err.println("Error sending drag info: " + e.getMessage());
             }
@@ -366,7 +373,7 @@ public class CtrlGame implements Initializable {
         }
     }
     
-    private void render(GameState gameState) {
+    public void render(GameState gameState) {
         gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
         drawBoard();
         drawPieces(gameState);
@@ -504,6 +511,20 @@ public class CtrlGame implements Initializable {
                 gc.fillRect(hoverColumn * CELL_SIZE + BOARD_OFFSET_X, BOARD_OFFSET_Y, 
                            CELL_SIZE, ROWS * CELL_SIZE);
             }
+        }
+    }
+
+    public void updateOpponentDragInfo(boolean dragging, double x, double y, String color) {
+        this.opponentIsDragging = dragging;
+        this.opponentDragX = x;
+        this.opponentDragY = y;
+        this.opponentDragColor = color;
+        
+        System.out.println("🎯 Drag oponente actualizado: " + dragging + " at (" + x + "," + y + ") color: " + color);
+        
+        // Redibujar inmediatamente para mostrar el cambio
+        if (Main.currentGameState != null) {
+            render(Main.currentGameState);
         }
     }
     

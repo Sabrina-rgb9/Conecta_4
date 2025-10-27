@@ -128,6 +128,9 @@ public class Main extends Application {
                     case "invitation":
                         handleInvitation(jsonMessage);
                         break;
+                    case "dragUpdate":  // NUEVO: Actualización rápida de drag
+                        handleDragUpdate(jsonMessage);
+                        break;
                     case "error":
                         handleErrorMessage(jsonMessage);
                         break;
@@ -151,6 +154,26 @@ public class Main extends Application {
         } catch (Exception e) {
             System.err.println("Error parsing serverData: " + e.getMessage());
         }
+    }
+
+    private static void handleDragUpdate(JSONObject dragMsg) {
+        String player = dragMsg.getString("player");
+        boolean dragging = dragMsg.getBoolean("dragging");
+        double x = dragMsg.getDouble("x");
+        double y = dragMsg.getDouble("y");
+        String color = dragMsg.getString("color");
+        
+        // Actualizar inmediatamente sin esperar al serverData completo
+        Platform.runLater(() -> {
+            if (!player.equals(Main.playerName)) { // Solo si es el oponente
+                CtrlGame gameCtrl = (CtrlGame) UtilsViews.getController("ViewGame");
+                if (gameCtrl != null && "ViewGame".equals(UtilsViews.getActiveView())) {
+                    // Actualizar estado del oponente y redibujar
+                    gameCtrl.updateOpponentDragInfo(dragging, x, y, color);
+                    gameCtrl.render(Main.currentGameState); // Redibujar inmediatamente
+                }
+            }
+        });
     }
     
     private static GameState parseGameState(JSONObject json) {

@@ -383,10 +383,22 @@ public class GameSession {
         dragInfo.setDragY(y);
         dragInfo.setPieceColor(pieceColor);
         
-        System.out.println("Drag updated for " + playerName + ": " + isDragging + " at (" + x + "," + y + ")");
+        System.out.println("🔄 Drag actualizado: " + playerName + " - " + isDragging + " at (" + x + "," + y + ")");
         
-        // Enviar update a ambos jugadores
-        broadcastGameState();
+        // BROADCAST INMEDIATO en lugar de esperar al gameState completo
+        broadcastDragUpdate(playerName, isDragging, x, y, pieceColor);
+    }
+
+    private void broadcastDragUpdate(String playerName, boolean isDragging, double x, double y, String color) {
+        JSONObject dragMsg = new JSONObject();
+        dragMsg.put("type", "dragUpdate");
+        dragMsg.put("player", playerName);
+        dragMsg.put("dragging", isDragging);
+        dragMsg.put("x", x);
+        dragMsg.put("y", y);
+        dragMsg.put("color", color);
+        
+        broadcastToPlayers(dragMsg.toString());
     }
     
     public void broadcastToPlayers(String message) {
