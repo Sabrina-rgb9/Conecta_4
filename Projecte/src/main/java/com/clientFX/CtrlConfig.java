@@ -1,50 +1,53 @@
 package com.clientFX;
 
 import javafx.fxml.FXML;
-import javafx.scene.control.TextField;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
 import javafx.scene.paint.Color;
 
 public class CtrlConfig {
 
-    @FXML public TextField txtProtocol;
-    @FXML public TextField txtHost;
-    @FXML public TextField txtPort;
-    @FXML public TextField txtName;
-    @FXML private Label lblMessage;
+    @FXML
+    public TextField txtProtocol;
+    @FXML
+    public TextField txtHost;
+    @FXML
+    public TextField txtPort;
+    @FXML
+    public TextField txtPlayerName;
+    @FXML
+    public Label lblMessage;
+    @FXML
+    public Button btnConnect;
 
     @FXML
-    public void initialize() {
-        if (txtProtocol != null) txtProtocol.setText("ws");
-        if (txtHost != null) txtHost.setText("localhost");
-        if (txtPort != null) txtPort.setText("3000");
-        if (txtName != null) txtName.setText("Jugador");
+    private void initialize() {
+        lblMessage.setText("");
+        txtProtocol.setText("ws");
+        txtHost.setText("localhost");
+        txtPort.setText("3000");
     }
 
     @FXML
-    private void onConnect() {
+    private void onConnectClick() {
         String protocol = txtProtocol.getText().trim();
         String host = txtHost.getText().trim();
         String port = txtPort.getText().trim();
-        String name = txtName.getText().trim();
+        String playerName = txtPlayerName.getText().trim();
 
-        if (protocol.isEmpty() || host.isEmpty() || port.isEmpty() || name.isEmpty()) {
-            showMessage("Rellena todos los campos", Color.RED);
+        if (protocol.isEmpty() || host.isEmpty() || port.isEmpty() || playerName.isEmpty()) {
+            showMessage("Tots els camps són obligatoris", Color.RED);
             return;
         }
 
-        Main.playerName = name;
-        String url = protocol + "://" + host + ":" + port;
-        showMessage("Conectando a " + url, Color.BLACK);
-        Main.connectToServer(url);
+        Main.playerName = playerName;
+        Main.connectedByUser = true;
+        Main.connectToServer();
     }
 
-    public void showMessage(String msg, Color c) {
-        if (lblMessage != null) {
-            lblMessage.setText(msg);
-            lblMessage.setTextFill(c);
-        } else {
-            System.out.println(msg);
-        }
+    public void showMessage(String msg, Color color) {
+        lblMessage.setTextFill(color);
+        lblMessage.setText(msg);
     }
 }

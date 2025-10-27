@@ -1,34 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.layout.AnchorPane?>
-<?import javafx.scene.text.Font?>
+<?import javafx.scene.layout.VBox?>
 
 <AnchorPane xmlns="http://javafx.com/javafx/19"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.clientFX.CtrlWaitingRoom"
-            minWidth="500.0" minHeight="300.0">
+            stylesheets="@style.css">
 
-    <children>
-        <Label text="Sala d'espera" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0"
-               AnchorPane.topAnchor="20.0" alignment="CENTER">
-            <font>
-                <Font size="28.0"/>
-            </font>
-        </Label>
-
-        <Label text="Jugador:" AnchorPane.leftAnchor="50.0" AnchorPane.topAnchor="100.0"/>
-        <Label fx:id="lblPlayerName" text="---" AnchorPane.leftAnchor="180.0" AnchorPane.topAnchor="100.0"/>
-
-        <Label text="Contrincant:" AnchorPane.leftAnchor="50.0" AnchorPane.topAnchor="140.0"/>
-        <Label fx:id="lblOpponent" text="---" AnchorPane.leftAnchor="180.0" AnchorPane.topAnchor="140.0"/>
-
-        <Label fx:id="lblStatus" text="Esperant contrincant..." 
-               AnchorPane.leftAnchor="50.0" AnchorPane.rightAnchor="50.0"
-               AnchorPane.topAnchor="200.0" alignment="CENTER">
-            <font>
-                <Font size="16.0"/>
-            </font>
-        </Label>
-    </children>
+    <VBox alignment="CENTER" spacing="20"
+          AnchorPane.leftAnchor="0" AnchorPane.rightAnchor="0"
+          AnchorPane.topAnchor="50" AnchorPane.bottomAnchor="50">
+        <Label text="Sala de espera" styleClass="label-title"/>
+        <Label fx:id="lblWaitingPlayers" text="Esperando jugadores..." styleClass="label-info"/>
+    </VBox>
 </AnchorPane>

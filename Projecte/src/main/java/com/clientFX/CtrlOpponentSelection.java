@@ -1,63 +1,99 @@
 package com.clientFX;
 
 import javafx.fxml.FXML;
-import javafx.scene.control.ListView;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListView;
+import javafx.scene.paint.Color;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class CtrlOpponentSelection {
 
-    @FXML private ListView<String> lstPlayers;
-    @FXML private Button btnInvite;
+    @FXML
+    private ListView<String> lstOpponents;
+    @FXML
+    private Label lblStatus;
+    @FXML
+    private Button btnInvite;
+    @FXML
+    private Button btnBack;
 
+    private String selectedOpponent = "";
+
+    @FXML
     public void initialize() {
-        if (lstPlayers != null) lstPlayers.getItems().clear();
+        lblStatus.setText("Selecciona un oponent per començar la partida");
+        lblStatus.setTextFill(Color.BLACK);
+
+        lstOpponents.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            selectedOpponent = newVal;
+            lblStatus.setText("Oponent seleccionat: " + selectedOpponent);
+        });
+
+        btnInvite.setOnAction(e -> inviteOpponent());
+        btnBack.setOnAction(e -> backToConfig());
     }
 
-    /**
-     * Recibe serverData o mensajes de lista y actualiza la lista de jugadores.
-     * Acepta msg tipo serverData con clientsList[] o msg tipo "clients" con list[].
-     */
     public void handleMessage(JSONObject msg) {
-        try {
-            if (msg.has("clientsList")) {
-                JSONArray arr = msg.getJSONArray("clientsList");
-                lstPlayers.getItems().clear();
-                for (int i = 0; i < arr.length(); i++) {
-                    JSONObject c = arr.getJSONObject(i);
-                    String name = c.optString("name", "");
-                    if (!name.isEmpty() && !name.equals(Main.playerName)) {
-                        lstPlayers.getItems().add(name);
-                    }
-                }
-            } else if (msg.has("list")) {
-                JSONArray arr = msg.getJSONArray("list");
-                lstPlayers.getItems().clear();
-                for (int i = 0; i < arr.length(); i++) {
-                    String name = arr.getString(i);
-                    if (!name.equals(Main.playerName)) lstPlayers.getItems().add(name);
-                }
+        String type = msg.getString("type");
+
+        switch (type) {
+            case "clients" -> updateOpponentList(msg);
+            case "invitation" -> {
+                String from = msg.getString("from");
+                lblStatus.setText("Has rebut una invitació de " + from);
+                lblStatus.setTextFill(Color.BLUE);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+            case "invitationAccepted" -> {
+                lblStatus.setText("Invitació acceptada! Esperant inici de la partida...");
+                lblStatus.setTextFill(Color.GREEN);
+                Main.connectedByUser = true;
+            }
+            case "invitationRejected" -> {
+                lblStatus.setText("El jugador ha rebutjat la teva invitació.");
+                lblStatus.setTextFill(Color.RED);
+            }
         }
     }
 
-    @FXML
-    private void onInvite() {
-        String opponent = lstPlayers.getSelectionModel().getSelectedItem();
-        if (opponent == null) return;
+    private void updateOpponentList(JSONObject msg) {
+        lstOpponents.getItems().clear();
+        JSONArray list = msg.getJSONArray("list");
 
-        JSONObject j = new JSONObject();
-        j.put("type", "clientInvite"); // coincide con tu servidor: clientInvite
-        j.put("opponent", opponent);
-        j.put("from", Main.playerName);
+        for (int i = 0; i < list.length(); i++) {
+            String name = list.getString(i);
+            if (!name.equals(Main.playerName)) {
+                lstOpponents.getItems().add(name);
+            }
+        }
 
-        if (Main.wsClient != null) Main.wsClient.send(j.toString());
+        if (lstOpponents.getItems().isEmpty()) {
+            lblStatus.setText("No hi ha altres jugadors connectats");
+            lblStatus.setTextFill(Color.GRAY);
+        }
+    }
 
-        Main.readyToPlay = true;
-        // Ir a sala de espera
-        UtilsViews.setView("ViewWaitingRoom");
+    private void inviteOpponent() {
+        if (selectedOpponent == null || selectedOpponent.isEmpty()) {
+            lblStatus.setText("Selecciona un oponent primer!");
+            lblStatus.setTextFill(Color.RED);
+            return;
+        }
+
+        JSONObject invite = new JSONObject();
+        invite.put("type", "invitation");
+        invite.put("from", Main.playerName);
+        invite.put("to", selectedOpponent);
+        Main.wsClient.sendMessage(invite.toString());
+
+        lblStatus.setText("Invitació enviada a " + selectedOpponent);
+        lblStatus.setTextFill(Color.DARKGREEN);
+    }
+
+    private void backToConfig() {
+        Main.connectedByUser = false;
+        Main.wsClient.close();
+        UtilsViews.setView("ViewConfig");
     }
 }
