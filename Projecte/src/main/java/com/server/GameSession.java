@@ -1,197 +1,407 @@
 package com.server;
 
 import org.java_websocket.WebSocket;
-import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.JSONArray;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-
+import com.shared.GameState;
+import com.shared.ClientInfo;
 import com.shared.GameObject;
+import com.shared.GameData;
+import com.shared.Move;
 
 public class GameSession {
+    private String sessionId;
+    private WebSocket player1;
+    private WebSocket player2;
+    private String player1Name;
+    private String player2Name;
+    private String currentTurn;
+    private String[][] board;
+    private boolean gameStarted = false;
+    private boolean gameFinished = false;
+    private String winner = "";
+    private List<GameObject> gameObjects;
+    private boolean countdownInProgress = false;
 
-    public enum Status { WAITING, COUNTDOWN, PLAYING, WIN, DRAW, FINISHED }
-
-    private final String playerR;
-    private final String playerY;
-
-    private final char[][] board = new char[6][7];
-
-    private volatile String turn;
-    private volatile Status status = Status.WAITING;
-    private volatile String winner = "";
-    private volatile int lastMoveCol = -1;
-    private volatile int lastMoveRow = -1;
-
-    private final AtomicInteger countdownSeconds = new AtomicInteger(0);
-
-    // Nuevos campos para mouse y objetos
-    private volatile double mouseXR = -1, mouseYR = -1, mouseXY = -1, mouseYY = -1;
-    private final List<GameObject> objectsList = new ArrayList<>();
-
-    public GameSession(String playerR, String playerY) {
-        this.playerR = playerR;
-        this.playerY = playerY;
-        clearBoard();
-        this.turn = playerR;
-        this.status = Status.WAITING;
-        // Inicializa objectsList con fichas disponibles
-        initializeObjects();
+    private Map<String, double[]> playerMousePositions = new ConcurrentHashMap<>();
+    
+    // Constantes del juego
+    private static final int ROWS = 6;
+    private static final int COLS = 7;
+    
+    public GameSession(String sessionId, WebSocket player1, String player1Name) {
+        this.sessionId = sessionId;
+        this.player1 = player1;
+        this.player1Name = player1Name;
+        this.currentTurn = player1Name;
+        initializeBoard();
+        initializeGameObjects();
+        
+        // Inicializar posición del mouse del jugador 1
+        playerMousePositions.put(player1Name, new double[]{0, 0});
     }
-
-    private void initializeObjects() {
-        // 5 fichas rojas y 5 amarillas en posiciones fijas (ajusta según UI)
-        for (int i = 0; i < 5; i++) {
-            objectsList.add(new GameObject("R_" + i, 610.0 + i * 60, 80.0, 20.0, -1, -1, "R"));
-            objectsList.add(new GameObject("Y_" + i, 610.0 + i * 60, 140.0, 20.0, -1, -1, "Y"));
+    
+    private void initializeBoard() {
+        board = new String[ROWS][COLS];
+        for (int i = 0; i < ROWS; i++) {
+            for (int j = 0; j < COLS; j++) {
+                board[i][j] = " ";
+            }
         }
     }
-
-    private void clearBoard() {
-        for (int r = 0; r < 6; r++) for (int c = 0; c < 7; c++) board[r][c] = ' ';
-    }
-
-    public String getPlayerR() { return playerR; }
-    public String getPlayerY() { return playerY; }
-
-    public Status getStatus() { return status; }
-    public void setStatus(Status s) { this.status = s; }
-
-    public void startCountdown(int seconds) {
-        countdownSeconds.set(seconds);
-        setStatus(Status.COUNTDOWN);
-    }
-
-    public int tickCountdown() {
-        int left = countdownSeconds.decrementAndGet();
-        if (left <= 0) {
-            countdownSeconds.set(0);
-            setStatus(Status.PLAYING);
+    
+    private void initializeGameObjects() {
+        gameObjects = new ArrayList<>();
+        // Crear fichas para los jugadores
+        for (int i = 0; i < 21; i++) {
+            GameObject redPiece = new GameObject();
+            redPiece.setId("R_" + i);
+            redPiece.setX(610.0 + (i % 7) * 60);
+            redPiece.setY(80.0 + (i / 7) * 60);
+            redPiece.setRole("R");
+            gameObjects.add(redPiece);
+            
+            GameObject yellowPiece = new GameObject();
+            yellowPiece.setId("Y_" + i);
+            yellowPiece.setX(610.0 + (i % 7) * 60);
+            yellowPiece.setY(80.0 + (i / 7) * 60);
+            yellowPiece.setRole("Y");
+            gameObjects.add(yellowPiece);
         }
-        return left;
     }
-
-    public synchronized JSONObject play(String playerName, int column) {
-        JSONObject resp = new JSONObject();
-        resp.put("ok", false);
-
-        if (status != Status.PLAYING) { resp.put("reason", "Not playing"); return resp; }
-        if (!playerName.equals(turn)) { resp.put("reason", "Not your turn"); return resp; }
-        if (column < 0 || column > 6) { resp.put("reason", "Invalid column"); return resp; }
-
-        int row = dropRow(column);
-        if (row == -1) { resp.put("reason", "Column full"); return resp; }
-
-        char piece = playerName.equals(playerR) ? 'R' : 'Y';
+    
+    public void addPlayer2(WebSocket player2, String player2Name) {
+        this.player2 = player2;
+        this.player2Name = player2Name;
+        this.gameStarted = true;
+        this.countdownInProgress = true;
+        
+        // Inicializar posición del mouse del jugador 2
+        playerMousePositions.put(player2Name, new double[]{0, 0});
+        
+        System.out.println("Partida iniciada: " + player1Name + " (R) vs " + player2Name + " (Y)");
+        
+        // Enviar estado INMEDIATAMENTE con status: "countdown"
+        broadcastGameState();
+        
+        // Luego iniciar countdown
+        sendCountdown();
+    }
+    
+    // NUEVO MÉTODO: Actualizar posición del mouse de un jugador
+    public void updatePlayerMousePosition(String playerName, double x, double y) {
+        if (playerMousePositions.containsKey(playerName)) {
+            playerMousePositions.put(playerName, new double[]{x, y});
+            System.out.println("Mouse actualizado - " + playerName + ": (" + x + ", " + y + ")");
+            // Enviar update a ambos jugadores
+            broadcastGameState();
+        }
+    }
+    
+    // NUEVO MÉTODO: Verificar si un jugador está en esta sesión
+    public boolean hasPlayerWithName(String playerName) {
+        return player1Name.equals(playerName) || (player2Name != null && player2Name.equals(playerName));
+    }
+    
+    private void sendCountdown() {
+        JSONObject countdownMsg = new JSONObject();
+        countdownMsg.put("type", "countdown");
+        countdownMsg.put("count", 3);
+        
+        broadcastToPlayers(countdownMsg.toString());
+        
+        // Programar inicio del juego después del countdown
+        Timer timer = new Timer();
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                startGame();
+            }
+        }, 4000);
+    }
+    
+    private void startGame() {
+        this.countdownInProgress = false;
+        this.gameStarted = true;
+        
+        System.out.println("¡Iniciando partida! Turno de: " + currentTurn);
+        
+        // Enviar estado con status: "playing"
+        broadcastGameState();
+    }
+    
+    public void makeMove(WebSocket player, int column) {
+        if (gameFinished || !gameStarted) return;
+        
+        String playerName = getPlayerName(player);
+        if (!playerName.equals(currentTurn)) return;
+        
+        // Encontrar la fila disponible en la columna
+        int row = -1;
+        for (int i = ROWS - 1; i >= 0; i--) {
+            if (board[i][column].equals(" ")) {
+                row = i;
+                break;
+            }
+        }
+        
+        if (row == -1) return; // Columna llena
+        
+        // Hacer el movimiento
+        String piece = playerName.equals(player1Name) ? "R" : "Y";
         board[row][column] = piece;
-        lastMoveCol = column;
-        lastMoveRow = row;
-
+        
+        // Verificar victoria
         if (checkWin(row, column, piece)) {
-            status = Status.WIN;
+            gameFinished = true;
             winner = playerName;
-        } else if (isBoardFull()) {
-            status = Status.DRAW;
-            winner = "";
-        } else {
-            turn = turn.equals(playerR) ? playerY : playerR;
+            broadcastGameState();
+            return;
         }
-
-        resp.put("ok", true);
-        resp.put("lastMove", new JSONObject().put("col", column).put("row", row));
-        resp.put("status", status.name());
-        resp.put("winner", winner);
-        return resp;
+        
+        // Verificar empate
+        if (checkDraw()) {
+            gameFinished = true;
+            winner = "draw";
+            broadcastGameState();
+            return;
+        }
+        
+        // Cambiar turno
+        currentTurn = currentTurn.equals(player1Name) ? player2Name : player1Name;
+        
+        // Broadcast del nuevo estado
+        broadcastGameState();
     }
-
-    private int dropRow(int col) {
-        for (int r = 5; r >= 0; r--) if (board[r][col] == ' ') return r;
-        return -1;
-    }
-
-    private boolean isBoardFull() {
-        for (int c = 0; c < 7; c++) if (board[0][c] == ' ') return false;
-        return true;
-    }
-
-    private boolean checkWin(int row, int col, char piece) {
-        int[][] dirs = {{0,1},{1,0},{1,1},{1,-1}};
-        for (int[] d : dirs) {
-            int count = 1 + countDirection(row,col,d[0],d[1],piece) + countDirection(row,col,-d[0],-d[1],piece);
+    
+    private boolean checkWin(int row, int col, String piece) {
+        // Verificar horizontal
+        int count = 0;
+        for (int c = 0; c < COLS; c++) {
+            count = board[row][c].equals(piece) ? count + 1 : 0;
             if (count >= 4) return true;
         }
+        
+        // Verificar vertical
+        count = 0;
+        for (int r = 0; r < ROWS; r++) {
+            count = board[r][col].equals(piece) ? count + 1 : 0;
+            if (count >= 4) return true;
+        }
+        
+        // Verificar diagonal \
+        count = 0;
+        for (int r = row, c = col; r >= 0 && c >= 0; r--, c--) {
+            if (board[r][c].equals(piece)) count++;
+            else break;
+        }
+        for (int r = row + 1, c = col + 1; r < ROWS && c < COLS; r++, c++) {
+            if (board[r][c].equals(piece)) count++;
+            else break;
+        }
+        if (count >= 4) return true;
+        
+        // Verificar diagonal /
+        count = 0;
+        for (int r = row, c = col; r >= 0 && c < COLS; r--, c++) {
+            if (board[r][c].equals(piece)) count++;
+            else break;
+        }
+        for (int r = row + 1, c = col - 1; r < ROWS && c >= 0; r++, c--) {
+            if (board[r][c].equals(piece)) count++;
+            else break;
+        }
+        if (count >= 4) return true;
+        
         return false;
     }
-
-    private int countDirection(int r,int c,int dr,int dc,char piece) {
-        int rr=r+dr,cc=c+dc,cnt=0;
-        while(rr>=0 && rr<6 && cc>=0 && cc<7 && board[rr][cc]==piece){cnt++; rr+=dr; cc+=dc;}
-        return cnt;
-    }
-
-    public void updateMouse(String player, double x, double y) {
-        if (player.equals(playerR)) { mouseXR = x; mouseYR = y; }
-        else if (player.equals(playerY)) { mouseXY = x; mouseYY = y; }
-    }
-
-    public synchronized JSONObject toServerData() {
-        JSONObject res = new JSONObject();
-        res.put("type","serverData");
-        res.put("status",status.name().toLowerCase());
-
-        JSONArray clientsList = new JSONArray();
-        clientsList.put(new JSONObject().put("name",playerR).put("role","R").put("mouseX",mouseXR).put("mouseY",mouseYR));
-        clientsList.put(new JSONObject().put("name",playerY).put("role","Y").put("mouseX",mouseXY).put("mouseY",mouseYY));
-        res.put("clientsList",clientsList);
-
-        JSONArray objectsArr = new JSONArray();
-        for (GameObject obj : objectsList) {
-            objectsArr.put(obj.toJSON());
+    
+    private boolean checkDraw() {
+        for (int c = 0; c < COLS; c++) {
+            if (board[0][c].equals(" ")) {
+                return false;
+            }
         }
-        res.put("objectsList", objectsArr);
-
-        JSONObject game = new JSONObject();
-        game.put("status",status.name().toLowerCase());
-        game.put("playerR",playerR);
-        game.put("playerY",playerY);
-
-        JSONArray boardArr = new JSONArray();
-        for(int r=0;r<6;r++){
-            JSONArray row = new JSONArray();
-            for(int c=0;c<7;c++) row.put(Character.toString(board[r][c]));
-            boardArr.put(row);
+        return true;
+    }
+    
+    public void broadcastGameState() {
+        GameState gameState = createGameState();
+        String gameStateJson = convertGameStateToJson(gameState);
+        broadcastToPlayers(gameStateJson);
+    }
+    
+    private GameState createGameState() {
+        GameState gameState = new GameState();
+        gameState.setType("serverData");
+        
+        // Crear lista de clientes
+        List<ClientInfo> clients = new ArrayList<>();
+        
+        // Jugador 1 (Rojo)
+        ClientInfo client1 = new ClientInfo();
+        client1.setName(player1Name);
+        client1.setColor("RED");
+        client1.setRole("R");
+        
+        // Obtener posición del mouse del jugador 1
+        double[] pos1 = playerMousePositions.get(player1Name);
+        client1.setMouseX(pos1 != null ? pos1[0] : 0);
+        client1.setMouseY(pos1 != null ? pos1[1] : 0);
+        
+        clients.add(client1);
+        
+        // Jugador 2 (Amarillo)
+        if (player2 != null) {
+            ClientInfo client2 = new ClientInfo();
+            client2.setName(player2Name);
+            client2.setColor("YELLOW");
+            client2.setRole("Y");
+            
+            // Obtener posición del mouse del jugador 2
+            double[] pos2 = playerMousePositions.get(player2Name);
+            client2.setMouseX(pos2 != null ? pos2[0] : 0);
+            client2.setMouseY(pos2 != null ? pos2[1] : 0);
+            
+            clients.add(client2);
         }
-        game.put("board",boardArr);
-        game.put("turn",turn);
-        if(lastMoveCol>=0 && lastMoveRow>=0) game.put("lastMove", new JSONObject().put("col",lastMoveCol).put("row",lastMoveRow));
-        else game.put("lastMove", JSONObject.NULL);
-
-        game.put("winner",winner==null?"":winner);
-
-        res.put("game",game);
-        return res;
+        
+        gameState.setClientsList(clients);
+        gameState.setObjectsList(gameObjects);
+        
+        // Crear datos del juego
+        GameData gameData = new GameData();
+        
+        if (gameFinished) {
+            if (winner.equals("draw")) {
+                gameData.setStatus("draw");
+            } else {
+                gameData.setStatus("win");
+            }
+        } else if (countdownInProgress) {
+            gameData.setStatus("countdown");
+        } else if (gameStarted) {
+            gameData.setStatus("playing");
+        } else {
+            gameData.setStatus("waiting");
+        }
+        
+        gameData.setBoard(board);
+        gameData.setTurn(currentTurn);
+        gameData.setWinner(winner);
+        
+        gameState.setGame(gameData);
+        
+        return gameState;
     }
-
-    public void sendStateTo(WebSocket ws, ClientRegistry registry){
-        JSONObject msg = toServerData();
-        if(ws!=null) try{ ws.send(msg.toString()); } catch(Exception e){ e.printStackTrace(); }
+    
+    private String convertGameStateToJson(GameState gameState) {
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "serverData");
+            
+            // Clients list
+            JSONArray clientsArray = new JSONArray();
+            for (ClientInfo client : gameState.getClientsList()) {
+                JSONObject clientJson = new JSONObject();
+                clientJson.put("name", client.getName());
+                clientJson.put("color", client.getColor());
+                clientJson.put("mouseX", client.getMouseX());
+                clientJson.put("mouseY", client.getMouseY());
+                clientJson.put("role", client.getRole());
+                clientsArray.put(clientJson);
+            }
+            json.put("clientsList", clientsArray);
+            
+            // Objects list
+            JSONArray objectsArray = new JSONArray();
+            for (GameObject obj : gameState.getObjectsList()) {
+                JSONObject objJson = new JSONObject();
+                objJson.put("id", obj.getId());
+                objJson.put("x", obj.getX());
+                objJson.put("y", obj.getY());
+                objJson.put("role", obj.getRole());
+                objectsArray.put(objJson);
+            }
+            json.put("objectsList", objectsArray);
+            
+            // Game data
+            if (gameState.getGame() != null) {
+                JSONObject gameJson = new JSONObject();
+                GameData gameData = gameState.getGame();
+                
+                gameJson.put("status", gameData.getStatus());
+                gameJson.put("turn", gameData.getTurn());
+                gameJson.put("winner", gameData.getWinner());
+                
+                // Board
+                JSONArray boardArray = new JSONArray();
+                String[][] board = gameData.getBoard();
+                if (board != null) {
+                    for (String[] row : board) {
+                        JSONArray rowArray = new JSONArray();
+                        for (String cell : row) {
+                            rowArray.put(cell != null ? cell : " ");
+                        }
+                        boardArray.put(rowArray);
+                    }
+                }
+                gameJson.put("board", boardArray);
+                
+                json.put("game", gameJson);
+            }
+            
+            return json.toString();
+        } catch (Exception e) {
+            System.err.println("Error converting GameState to JSON: " + e.getMessage());
+            return "{\"type\":\"serverData\",\"clientsList\":[],\"game\":{\"status\":\"waiting\"}}";
+        }
     }
-
-    public void broadcastState(ClientRegistry registry){
-        JSONObject msg = toServerData();
-        WebSocket wr = registry.socketByName(playerR);
-        WebSocket wy = registry.socketByName(playerY);
-        if(wr!=null) try{ wr.send(msg.toString()); } catch(Exception e){ registry.cleanupDisconnected(wr); }
-        if(wy!=null) try{ wy.send(msg.toString()); } catch(Exception e){ registry.cleanupDisconnected(wy); }
+    
+    public void broadcastToPlayers(String message) {
+        if (player1 != null && player1.isOpen()) {
+            player1.send(message);
+        }
+        if (player2 != null && player2.isOpen()) {
+            player2.send(message);
+        }
     }
-
-    public void finish(){ setStatus(Status.FINISHED); }
-
-    public boolean involves(String name){ return playerR.equals(name)||playerY.equals(name); }
-
-    public boolean isPlayerTurn(String name){ return name.equals(turn); }
-
-    public String getWinner(){ return winner; }
+    
+    public String getPlayerName(WebSocket player) {
+        if (player == player1) return player1Name;
+        if (player == player2) return player2Name;
+        return null;
+    }
+    
+    public boolean hasPlayer(WebSocket player) {
+        return player == player1 || player == player2;
+    }
+    
+    public void removePlayer(WebSocket player) {
+        if (player == player1) {
+            player1 = null;
+        } else if (player == player2) {
+            player2 = null;
+        }
+        
+        // Si un jugador se desconecta, terminar la partida
+        if (gameStarted && !gameFinished) {
+            gameFinished = true;
+            winner = getPlayerName(player == player1 ? player2 : player1);
+            broadcastGameState();
+        }
+    }
+    
+    // Getters
+    public String getSessionId() { return sessionId; }
+    public boolean isGameStarted() { return gameStarted; }
+    public boolean isGameFinished() { return gameFinished; }
+    public boolean hasTwoPlayers() { return player1 != null && player2 != null; }
+    public WebSocket getPlayer1() { return player1; }
+    public WebSocket getPlayer2() { return player2; }
+    public String getPlayer1Name() { return player1Name; }
+    public String getPlayer2Name() { return player2Name; }
 }
