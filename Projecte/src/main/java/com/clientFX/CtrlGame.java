@@ -14,12 +14,9 @@ import javafx.util.Duration;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.util.ArrayList;
+import java.net.URI;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-
-import com.shared.GameObject;
 
 public class CtrlGame {
 
@@ -33,18 +30,18 @@ public class CtrlGame {
     @FXML private Pane paneOpponentPieces;
 
     private String clientName = "";
-    private String role = "";
+    private String role = ""; // "R" o "Y"
     private JSONObject gameState;
+    private double mouseX, mouseY;
     private Map<String, double[]> opponentMouse = new HashMap<>();
-    private List<GameObject> availablePieces = new ArrayList<>();
-    private boolean[][] winningCells = new boolean[6][7];
-
     private final int rows = 6;
     private final int cols = 7;
     private final double cellSize = 80;
     private int lastMoveRow = -1;
     private int lastMoveCol = -1;
     private Timeline dropAnimation;
+
+    public static WSClient wsClient;
 
     @FXML
     public void initialize() {
@@ -53,8 +50,18 @@ public class CtrlGame {
 
         canvas.setOnMouseMoved(this::handleHover);
         canvas.setOnMouseClicked(this::handleClick);
+
         canvas.widthProperty().addListener((obs, old, newVal) -> redraw());
         canvas.heightProperty().addListener((obs, old, newVal) -> redraw());
+        
+        // Inicializar WebSocket
+        try {
+            wsClient = new WSClient(new URI("ws://localhost:3000"), this);
+            wsClient.connect();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
     }
 
     private void handleHover(MouseEvent e) {
@@ -66,7 +73,7 @@ public class CtrlGame {
 
     private void handleClick(MouseEvent e) {
         if (gameState == null || Main.wsClient == null) return;
-        if (!clientName.equals(gameState.optString("turn"))) return;
+        if (!clientName.equals(gameState.getString("turn"))) return;
 
         int col = (int) (e.getX() / cellSize);
         if (col >= 0 && col < cols) {
@@ -74,170 +81,251 @@ public class CtrlGame {
         }
     }
 
-    private void handleDrag(MouseEvent e) {
-        if (dragging && draggedPiece != null) {
-            draggedPiece.setLayoutX(e.getSceneX() - dragOffsetX);
-            draggedPiece.setLayoutY(e.getSceneY() - dragOffsetY);
-        }
-    }
-
-    private void handleRelease(MouseEvent e) {
-        if (dragging && draggedPiece != null) {
-            int col = (int) (e.getX() / cellSize);
-            if (col >= 0 && col < cols && clientName.equals(gameState.optString("turn"))) {
-                sendPlay(col);
-                paneYourPieces.getChildren().remove(draggedPiece);
-            } else {
-                resetDraggedPiece();
-            }
-        }
-        dragging = false;
-        draggedPiece = null;
-    }
-
-    private void resetDraggedPiece() {
-        if (draggedPiece != null) {
-            draggedPiece.setTranslateX(0);
-            draggedPiece.setTranslateY(0);
-            draggedPiece.setMouseTransparent(false);
-        }
-    }
-
     private void sendPlay(int col) {
-        if (Main.wsClient == null) return;
-        JSONObject obj = new JSONObject();
-        obj.put("type", "clientPlay");
-        obj.put("col", col);
-        Main.wsClient.safeSend(obj.toString());
+        if(wsClient == null) return;
+        wsClient.safeSend(new org.json.JSONObject()
+            .put("type","clientPlay")
+            .put("col",col)
+            .toString());
     }
 
-    private void sendMouse(double x, double y) {
-        if (Main.wsClient == null) return;
-        JSONObject obj = new JSONObject();
-        obj.put("type", "clientMouseMoving");
-        obj.put("x", x);
-        obj.put("y", y);
-        Main.wsClient.safeSend(obj.toString());
+    private void sendMouse(double x,double y){
+        if(wsClient==null) return;
+        wsClient.safeSend(new org.json.JSONObject()
+            .put("type","clientMouseMoving")
+            .put("x",x)
+            .put("y",y)
+            .toString());
     }
+
+    private void sendInvite(String dest){
+        if(wsClient==null) return;
+        wsClient.safeSend(new org.json.JSONObject()
+            .put("type","invite")
+            .put("dest",dest)
+            .toString());
+    }
+
+    private void sendAccept(String origin){
+        if(wsClient==null) return;
+        wsClient.safeSend(new org.json.JSONObject()
+            .put("type","acceptInvite")
+            .put("origin",origin)
+            .toString());
+    }
+
 
     public void handleMessage(JSONObject msg) {
-        String type = msg.optString("type", "");
+        String type = msg.getString("type");
+
         Platform.runLater(() -> {
             switch (type) {
-                case "serverData" -> {
-                    clientName = msg.optString("clientName", "");
-                    role = msg.optString("role", "");
-                    gameState = msg.optJSONObject("game");
+                case "serverData":
+                    handleServerData(msg);
+                    break;
 
-                    lblPlayerName.setText(clientName);
-                    lblYourRole.setText("(" + role + ")");
-                    lblOpponentName.setText(msg.optString("opponent", "---"));
-                    lblOpponentRole.setText(role.equals("R") ? "(Y)" : "(R)");
+                case "clientMouseMoving":
+                    handleOpponentMouse(msg);
+                    break;
 
-                    JSONArray objectsList = msg.optJSONArray("objectsList");
-                    if (objectsList != null) {
-                        availablePieces.clear();
-                        paneYourPieces.getChildren().clear();
-                        for (int i = 0; i < objectsList.length(); i++) {
-                            JSONObject obj = objectsList.getJSONObject(i);
-                            GameObject go = GameObject.fromJSON(obj);
-                            availablePieces.add(go);
+                case "countdown":
+                    lblTurnIndicator.setText("Comenzando en: " + msg.getInt("seconds"));
+                    break;
 
-                            Circle circle = new Circle(20);
-                            circle.setFill(role.equals("R") ? Color.RED : Color.YELLOW);
-                            circle.setUserData(go.getId());
-                            paneYourPieces.getChildren().add(circle);
-                        }
-                    }
-                    redraw();
-                }
-                case "updateBoard" -> {
-                    gameState = msg.optJSONObject("game");
-                    redraw();
-                    updateTurnIndicator();
-                }
-                case "winner" -> {
-                    String winner = msg.optString("winner");
-                    highlightWinning(msg.optJSONArray("cells"));
-                    lblTurnIndicator.setText(winner.equals(clientName) ? "HAS GUANYAT 🎉" : "HAS PERDUT 😞");
+                case "gameStarted":
+                    lblTurnIndicator.setText("Juego iniciado. Oponente: " + msg.optString("opponent", "---"));
+                    break;
 
-                    Timeline t = new Timeline(new KeyFrame(Duration.seconds(3),
-                            e -> UtilsViews.setView("ViewResult")));
-                    t.play();
-                }
-                case "clientMouseMoving" -> {
-                    String player = msg.optString("player");
-                    double x = msg.optDouble("x");
-                    double y = msg.optDouble("y");
-                    opponentMouse.put(player, new double[]{x, y});
-                    redraw();
-                }
+                case "gameResult":
+                    lblTurnIndicator.setText("Resultado: " + msg.getString("result").toUpperCase());
+                    break;
+
+                case "opponentDisconnected":
+                    lblTurnIndicator.setText("Oponente desconectado: " + msg.getString("name"));
+                    break;
+
+                case "invite":
+                    System.out.println("Invitación recibida de: " + msg.getString("origin"));
+                    break;
+
+                default:
+                    System.out.println("Mensaje desconocido: " + msg.toString());
             }
         });
     }
 
-    private void updateTurnIndicator() {
-        if (gameState == null) return;
-        String turn = gameState.optString("turn", "");
-        if (turn.equals(clientName)) {
-            lblTurnIndicator.setText("El teu torn!");
-            lblTurnIndicator.setTextFill(Color.GREEN);
-        } else {
-            lblTurnIndicator.setText("Torn del rival...");
-            lblTurnIndicator.setTextFill(Color.GRAY);
-        }
-    }
+    private void handleServerData(JSONObject msg) {
+        gameState = msg.getJSONObject("game");
 
-    private void highlightWinning(JSONArray cells) {
-        if (cells == null) return;
-        for (int i = 0; i < cells.length(); i++) {
-            JSONArray pair = cells.getJSONArray(i);
-            int r = pair.getInt(0);
-            int c = pair.getInt(1);
-            winningCells[r][c] = true;
-        }
-        redraw();
-    }
-
-    private void redraw() {
-        if (canvas == null) return;
-        GraphicsContext gc = canvas.getGraphicsContext2D();
-        gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
-
-        // Dibujar fondo tablero
-        gc.setFill(Color.LIGHTBLUE);
-        gc.fillRect(0, 0, cols * cellSize, rows * cellSize);
-
-        // Dibujar celdas
-        for (int r = 0; r < rows; r++) {
-            for (int c = 0; c < cols; c++) {
-                double x = c * cellSize;
-                double y = r * cellSize;
-                gc.setFill(Color.WHITE);
-                gc.fillOval(x + 10, y + 10, cellSize - 20, cellSize - 20);
-
-                if (winningCells[r][c]) {
-                    gc.setStroke(Color.GOLD);
-                    gc.setLineWidth(5);
-                    gc.strokeOval(x + 10, y + 10, cellSize - 20, cellSize - 20);
-                }
+        // Extraer roles y nombres
+        JSONArray clients = msg.getJSONArray("clientsList");
+        String opponentName = "---";
+        for (int i = 0; i < clients.length(); i++) {
+            JSONObject p = clients.getJSONObject(i);
+            String name = p.getString("name");
+            String pRole = p.getString("role");
+            if (name.equals(clientName)) {
+                role = pRole;
+            } else {
+                opponentName = name;
             }
         }
 
-        // Dibujar fichas desde gameState
-        if (gameState != null && gameState.has("board")) {
+        updatePlayerUI(opponentName);
+
+        // Animar última jugada
+        if (gameState.has("lastMove") && !gameState.isNull("lastMove")) {
+            JSONObject lm = gameState.getJSONObject("lastMove");
+            int r = lm.getInt("row");
+            int c = lm.getInt("col");
+            if (r != lastMoveRow || c != lastMoveCol) {
+                lastMoveRow = r;
+                lastMoveCol = c;
+                animateDrop(c, r);
+                return;
+            }
+        }
+
+        redraw();
+    }
+
+    private void updatePlayerUI(String opponentName) {
+        lblPlayerName.setText(clientName);
+        lblYourRole.setText("(" + role + ")");
+        lblYourRole.setStyle("-fx-text-fill: " + ("R".equals(role) ? "red" : "yellow") + ";");
+
+        String oppRole = "R".equals(role) ? "Y" : "R";
+        lblOpponentName.setText(opponentName);
+        lblOpponentRole.setText("(" + oppRole + ")");
+        lblOpponentRole.setStyle("-fx-text-fill: " + ("R".equals(oppRole) ? "red" : "yellow") + ";");
+
+        // Turno
+        boolean myTurn = clientName.equals(gameState.getString("turn"));
+        if (myTurn) {
+            lblTurnIndicator.setText("Et toca jugar");
+            lblTurnIndicator.setStyle("-fx-text-fill: green; -fx-font-weight: bold; -fx-font-style: normal;");
+        } else {
+            lblTurnIndicator.setText("Esperant...");
+            lblTurnIndicator.setStyle("-fx-text-fill: gray; -fx-font-style: italic; -fx-font-weight: normal;");
+        }
+    }
+
+    private void handleOpponentMouse(JSONObject msg) {
+        String player = msg.getString("player");
+        if (!player.equals(clientName)) {
+            opponentMouse.put(player, new double[]{msg.getDouble("x"), msg.getDouble("y")});
+            redraw();
+        }
+    }
+
+
+    private void animateDrop(int col, int targetRow) {
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        double startX = col * cellSize + cellSize / 2.0;
+        double startY = -cellSize / 2.0;
+        double endY = targetRow * cellSize + cellSize / 2.0;
+        double[] currentY = {startY};
+
+        Timeline renderLoop = new Timeline(
+            new KeyFrame(Duration.millis(16), e -> {
+                gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
+                redraw();
+                String piece = getPieceAt(targetRow, col);
+                Color color = "R".equals(piece) ? Color.RED : Color.YELLOW;
+                gc.setFill(color);
+                gc.fillOval(startX - cellSize/2 + 5, currentY[0] - cellSize/2 + 5, cellSize - 10, cellSize - 10);
+                if (currentY[0] < endY) {
+                    currentY[0] += 8;
+                    if (currentY[0] > endY) currentY[0] = endY;
+                }
+            })
+        );
+        renderLoop.setCycleCount(Timeline.INDEFINITE);
+
+        Timeline stopper = new Timeline(new KeyFrame(Duration.millis(600), e -> {
+            renderLoop.stop();
+            redraw();
+        }));
+        stopper.play();
+        renderLoop.play();
+    }
+
+    private void redraw() {
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
+
+        // Fondo tablero
+        gc.setFill(Color.LIGHTBLUE);
+        gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
+
+        // Dibujar tablero
+        for (int c = 0; c < cols; c++) {
+            // Hover local
+            if (gameState != null && clientName.equals(gameState.getString("turn"))) {
+                int hoverCol = (int) (mouseX / cellSize);
+                if (hoverCol == c) {
+                    gc.setFill(Color.rgb(255, 255, 0, 0.2));
+                    gc.fillRect(c * cellSize, 0, cellSize, canvas.getHeight());
+                }
+            }
+
+            // Hover remoto
+            for (double[] pos : opponentMouse.values()) {
+                int colOpp = (int) (pos[0] / cellSize);
+                if (colOpp == c) {
+                    gc.setStroke(Color.GRAY);
+                    gc.setLineWidth(2);
+                    gc.strokeRect(c * cellSize, 0, cellSize, canvas.getHeight());
+                }
+            }
+
+            for (int r = 0; r < rows; r++) {
+                gc.setStroke(Color.GRAY);
+                gc.setFill(Color.WHITE);
+                gc.fillOval(c * cellSize + 5, r * cellSize + 5, cellSize - 10, cellSize - 10);
+                gc.strokeOval(c * cellSize + 5, r * cellSize + 5, cellSize - 10, cellSize - 10);
+            }
+        }
+
+        // Fichas jugadas
+        if (gameState != null) {
             JSONArray board = gameState.getJSONArray("board");
             for (int r = 0; r < rows; r++) {
                 JSONArray row = board.getJSONArray(r);
                 for (int c = 0; c < cols; c++) {
-                    String cell = row.getString(c);
-                    if (cell.equals("R") || cell.equals("Y")) {
-                        gc.setFill(cell.equals("R") ? Color.RED : Color.YELLOW);
-                        gc.fillOval(c * cellSize + 10, r * cellSize + 10, cellSize - 20, cellSize - 20);
+                    String val = row.getString(c);
+                    if ("R".equals(val)) {
+                        gc.setFill(Color.RED);
+                    } else if ("Y".equals(val)) {
+                        gc.setFill(Color.YELLOW);
+                    } else continue;
+
+                    if (isWinningCell(r, c)) {
+                        gc.setGlobalAlpha(0.8);
+                        gc.fillOval(c * cellSize + 5, r * cellSize + 5, cellSize - 10, cellSize - 10);
+                        gc.setGlobalAlpha(1.0);
+                        gc.setStroke(Color.WHITE);
+                        gc.setLineWidth(3);
+                        gc.strokeOval(c * cellSize + 5, r * cellSize + 5, cellSize - 10, cellSize - 10);
+                        gc.setLineWidth(1);
+                    } else {
+                        gc.fillOval(c * cellSize + 5, r * cellSize + 5, cellSize - 10, cellSize - 10);
                     }
                 }
             }
         }
+
+        // Punter remoto
+        for (double[] pos : opponentMouse.values()) {
+            gc.setStroke(Color.GRAY);
+            gc.setLineWidth(1);
+            gc.setLineDashes(5);
+            gc.strokeLine(pos[0], 0, pos[0], canvas.getHeight());
+            gc.setLineDashes(null);
+        }
+
+        // === DIBUJAR FICHAS DISPONIBLES EN LOS PANELES ===
+        drawAvailablePieces();
     }
 
     private void drawAvailablePieces() {
