@@ -6,10 +6,11 @@ public class ClientInfo {
     private double mouseX;
     private double mouseY;
     private String role;
+    private DragInfo dragInfo = new DragInfo();
     
     public ClientInfo() {}
     
-    // Getters y setters
+    // Getters y setters para los campos existentes
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     
@@ -24,4 +25,8 @@ public class ClientInfo {
     
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
+    
+    // Getters y setters para DragInfo
+    public DragInfo getDragInfo() { return dragInfo; }
+    public void setDragInfo(DragInfo dragInfo) { this.dragInfo = dragInfo; }
 }
