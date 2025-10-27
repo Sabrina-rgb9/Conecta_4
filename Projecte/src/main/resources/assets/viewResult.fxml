@@ -1,18 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.layout.AnchorPane?>
-<?import javafx.scene.layout.VBox?>
 
-<AnchorPane xmlns="http://javafx.com/javafx/19"
-            xmlns:fx="http://javafx.com/fxml/1"
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane xmlns="http://javafx.com/javafx/8"
+            xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.clientFX.CtrlResult"
-            stylesheets="@style.css">
+            prefWidth="800" prefHeight="600"
+            style="-fx-background-color: linear-gradient(to bottom right, #26a69a, #004d40);">
 
-    <VBox alignment="CENTER" spacing="20"
+    <VBox alignment="CENTER" spacing="25"
           AnchorPane.leftAnchor="0" AnchorPane.rightAnchor="0"
-          AnchorPane.topAnchor="50" AnchorPane.bottomAnchor="50">
-        <Label fx:id="lblResult" text="Ganador: ---" styleClass="label-title"/>
-        <Button fx:id="btnReturn" text="Volver al inicio" styleClass="btn-primary"/>
+          AnchorPane.topAnchor="0" AnchorPane.bottomAnchor="0">
+
+        <Label text="Resultat de la partida"
+               style="-fx-text-fill: white; -fx-font-weight: bold;">
+            <font><Font size="36"/></font>
+        </Label>
+
+        <Label fx:id="lblWinner" text="Guanyador: Jugador 1"
+               style="-fx-text-fill: #ffeb3b; -fx-font-size: 28; -fx-font-weight: bold;"/>
+
+        <HBox spacing="20" alignment="CENTER">
+            <Button fx:id="btnReplay" text="Revanxa"
+                    style="-fx-background-color: #00796b; -fx-text-fill: white; -fx-background-radius: 12; -fx-padding: 10 25;"/>
+            <Button fx:id="btnExit" text="Sortir"
+                    style="-fx-background-color: #ef5350; -fx-text-fill: white; -fx-background-radius: 12; -fx-padding: 10 25;"/>
+        </HBox>
     </VBox>
 </AnchorPane>

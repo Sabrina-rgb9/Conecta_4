@@ -1,19 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.layout.AnchorPane?>
-<?import javafx.scene.layout.VBox?>
 
-<AnchorPane xmlns="http://javafx.com/javafx/19"
-            xmlns:fx="http://javafx.com/fxml/1"
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane xmlns="http://javafx.com/javafx/8"
+            xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.clientFX.CtrlOpponentSelection"
-            stylesheets="@style.css">
+            prefWidth="800" prefHeight="600"
+            style="-fx-background-color: linear-gradient(to bottom right, #b2dfdb, #4db6ac);">
 
-    <VBox alignment="CENTER" spacing="20"
+    <VBox alignment="CENTER" spacing="15"
           AnchorPane.leftAnchor="0" AnchorPane.rightAnchor="0"
-          AnchorPane.topAnchor="50" AnchorPane.bottomAnchor="50">
-        <Label text="Selecciona un oponente" styleClass="label-title"/>
-        <VBox fx:id="opponentsList" spacing="10"/>
-        <Button fx:id="btnRefresh" text="Actualizar lista" styleClass="btn-secondary"/>
+          AnchorPane.topAnchor="40" AnchorPane.bottomAnchor="40">
+
+        <Label text="Tria el teu oponent"
+               style="-fx-font-weight: bold; -fx-text-fill: #004d40;">
+            <font><Font size="30"/></font>
+        </Label>
+
+        <ListView fx:id="lstOpponents" prefWidth="400" prefHeight="300"
+                  style="-fx-background-radius: 12; -fx-border-radius: 12; -fx-border-color: #004d40;"/>
+
+        <Label fx:id="lblStatus" text="Esperant jugadors..."
+               style="-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 16;"/>
+
+        <HBox alignment="CENTER" spacing="20">
+            <Button fx:id="btnInvite" text="Invitar"
+                    style="-fx-background-color: #00796b; -fx-text-fill: white; -fx-font-weight: bold;
+                           -fx-background-radius: 10; -fx-padding: 10 25;"/>
+            <Button fx:id="btnBack" text="Tornar"
+                    style="-fx-background-color: #ef5350; -fx-text-fill: white; -fx-font-weight: bold;
+                           -fx-background-radius: 10; -fx-padding: 10 25;"/>
+        </HBox>
     </VBox>
 </AnchorPane>

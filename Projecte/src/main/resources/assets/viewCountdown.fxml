@@ -1,14 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.layout.AnchorPane?>
 
-<AnchorPane xmlns="http://javafx.com/javafx/19"
-            xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="com.clientFX.CtrlCountdown"
-            stylesheets="@style.css">
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.text.Font?>
 
-    <Label fx:id="lblCountdown" text="3" 
-           AnchorPane.leftAnchor="0" AnchorPane.rightAnchor="0"
-           AnchorPane.topAnchor="200" AnchorPane.bottomAnchor="0"
-           alignment="CENTER" styleClass="label-countdown"/>
-</AnchorPane>
+<StackPane xmlns="http://javafx.com/javafx/8"
+           xmlns:fx="http://javafx.com/fxml"
+           fx:controller="com.clientFX.CtrlCountdown"
+           prefWidth="800" prefHeight="600"
+           style="-fx-background-color: radial-gradient(center 50% 50%, radius 100%, #4db6ac, #00695c);">
+
+    <Label fx:id="lblCountdown" text="3"
+           style="-fx-text-fill: white; -fx-font-weight: bold;">
+        <font><Font size="150"/></font>
+    </Label>
+</StackPane>

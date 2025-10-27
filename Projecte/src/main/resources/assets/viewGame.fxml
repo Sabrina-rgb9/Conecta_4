@@ -1,63 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.scene.canvas.Canvas?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.layout.AnchorPane?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.VBox?>
 
-<AnchorPane xmlns="http://javafx.com/javafx/19"
-            xmlns:fx="http://javafx.com/fxml/1"
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.shape.Circle?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane xmlns="http://javafx.com/javafx/8"
+            xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.clientFX.CtrlGame"
-            minWidth="950.0" minHeight="650.0"
-            stylesheets="@style.css">
+            prefWidth="900" prefHeight="700"
+            style="-fx-background-color: linear-gradient(to bottom right, #b2dfdb, #4db6ac);">
 
-    <!-- Título -->
-    <Label text="Connecta 4"
-           AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0"
-           AnchorPane.topAnchor="10.0" alignment="CENTER"
-           styleClass="label-title"/>
+    <top>
+        <HBox spacing="20" alignment="CENTER" style="-fx-padding: 20;">
+            <Label fx:id="lblPlayer1" text="Jugador 1"
+                   style="-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 20;"/>
+            <Label text="VS" style="-fx-text-fill: #004d40; -fx-font-size: 22; -fx-font-weight: bold;"/>
+            <Label fx:id="lblPlayer2" text="Jugador 2"
+                   style="-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 20;"/>
+        </HBox>
+    </top>
 
-    <!-- Panel superior: Jugadores y turno -->
-    <HBox alignment="CENTER" spacing="30"
-          AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="20.0"
-          AnchorPane.topAnchor="60.0" minHeight="60">
-        <VBox alignment="CENTER">
-            <Label text="Tu:" styleClass="label-info"/>
-            <Label fx:id="lblPlayerName" text="---" styleClass="label-name"/>
-            <Label fx:id="lblYourRole" text="(R)" styleClass="label-role"/>
-        </VBox>
-        <Label text="VS" styleClass="label-vs"/>
-        <VBox alignment="CENTER">
-            <Label text="Oponente:" styleClass="label-info"/>
-            <Label fx:id="lblOpponentName" text="---" styleClass="label-name"/>
-            <Label fx:id="lblOpponentRole" text="(Y)" styleClass="label-role"/>
-        </VBox>
-        <VBox alignment="CENTER">
-            <Label text="Turno:" styleClass="label-info"/>
-            <Label fx:id="lblTurnIndicator" text="Esperando..." styleClass="label-turn"/>
-        </VBox>
-    </HBox>
+    <center>
+        <GridPane fx:id="gridBoard" hgap="10" vgap="10" alignment="CENTER"
+                  style="-fx-background-color: #004d40; -fx-background-radius: 15; -fx-padding: 20;">
+        </GridPane>
+    </center>
 
-    <!-- Contenedor: Tablero + Fichas -->
-    <HBox spacing="20"
-          AnchorPane.topAnchor="140.0"
-          AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="20.0">
-        
-        <!-- Tablero -->
-        <Canvas fx:id="canvas" width="560" height="480"/>
-
-        <!-- Panel de fichas disponibles -->
-        <VBox spacing="10" alignment="TOP_CENTER">
-            <Label text="Tus fichas" styleClass="label-info"/>
-            <VBox fx:id="paneYourPieces" spacing="5"/>
-
-            <Label text="Fichas del rival" styleClass="label-info label-opponent"/>
-            <VBox fx:id="paneOpponentPieces" spacing="5"/>
-        </VBox>
-    </HBox>
-
-    <!-- Instrucción -->
-    <Label text="Arrastra una ficha a una columna"
-           AnchorPane.leftAnchor="20.0" AnchorPane.bottomAnchor="20.0"
-           styleClass="label-instruction"/>
-</AnchorPane>
+    <bottom>
+        <HBox alignment="CENTER" spacing="30" style="-fx-padding: 20;">
+            <Button fx:id="btnExit" text="Sortir"
+                    style="-fx-background-color: #ef5350; -fx-text-fill: white; -fx-background-radius: 10; -fx-padding: 10 25;"/>
+            <Label fx:id="lblTurn" text="Torn: Jugador 1"
+                   style="-fx-text-fill: white; -fx-font-size: 18; -fx-font-weight: bold;"/>
+        </HBox>
+    </bottom>
+</BorderPane>

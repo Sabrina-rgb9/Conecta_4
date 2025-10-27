@@ -1,17 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.layout.AnchorPane?>
-<?import javafx.scene.layout.VBox?>
 
-<AnchorPane xmlns="http://javafx.com/javafx/19"
-            xmlns:fx="http://javafx.com/fxml/1"
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane xmlns="http://javafx.com/javafx/8"
+            xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.clientFX.CtrlWaitingRoom"
-            stylesheets="@style.css">
+            prefWidth="800" prefHeight="600"
+            style="-fx-background-color: linear-gradient(to bottom, #80deea, #26c6da);">
 
-    <VBox alignment="CENTER" spacing="20"
-          AnchorPane.leftAnchor="0" AnchorPane.rightAnchor="0"
-          AnchorPane.topAnchor="50" AnchorPane.bottomAnchor="50">
-        <Label text="Sala de espera" styleClass="label-title"/>
-        <Label fx:id="lblWaitingPlayers" text="Esperando jugadores..." styleClass="label-info"/>
+    <VBox alignment="CENTER" spacing="20" AnchorPane.leftAnchor="0" AnchorPane.rightAnchor="0"
+          AnchorPane.topAnchor="0" AnchorPane.bottomAnchor="0">
+
+        <Label text="Sala d'espera" style="-fx-font-weight: bold; -fx-text-fill: #004d40;">
+            <font><Font size="34"/></font>
+        </Label>
+
+        <Label fx:id="lblWaiting" text="Esperant al teu oponent..."
+               style="-fx-text-fill: white; -fx-font-size: 20;"/>
+
+        <ProgressIndicator fx:id="progress" progress="-1.0" prefWidth="100" prefHeight="100"/>
+
+        <Button fx:id="btnCancel" text="Cancel·lar"
+                style="-fx-background-color: #ef5350; -fx-text-fill: white; -fx-font-weight: bold;
+                       -fx-background-radius: 12; -fx-padding: 10 25;"/>
     </VBox>
 </AnchorPane>
