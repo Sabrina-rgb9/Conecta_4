@@ -115,34 +115,28 @@ public class Main extends Application {
             
             if (jsonMessage.has("type")) {
                 String type = jsonMessage.getString("type");
+                System.out.println("📨 Mensaje recibido - Tipo: " + type);
+                
                 switch (type) {
                     case "serverData":
                         handleServerData(jsonMessage);
                         break;
                     case "countdown":
+                        System.out.println("🎮 Mensaje COUNTDOWN recibido del servidor");
                         handleCountdown(jsonMessage);
-                        break;
-                    case "gameStart":
-                        handleGameStart();
                         break;
                     case "invitation":
                         handleInvitation(jsonMessage);
-                        break;
-                    case "dragUpdate":  // NUEVO: Actualización rápida de drag
-                        handleDragUpdate(jsonMessage);
                         break;
                     case "error":
                         handleErrorMessage(jsonMessage);
                         break;
                     default:
-                        System.out.println("Unknown message type: " + type);
+                        System.out.println("❓ Tipo de mensaje desconocido: " + type);
                 }
-            } else {
-                System.err.println("Message without type: " + message);
             }
         } catch (Exception e) {
-            System.err.println("Error parsing message: " + e.getMessage());
-            System.err.println("Raw message: " + message);
+            System.err.println("❌ Error parsing message: " + e.getMessage());
         }
     }
     
@@ -250,12 +244,16 @@ public class Main extends Application {
     }
     
     private static void updateGameState(GameState gameState) {
-        // Determinar mi rol
-        if ((myRole == null || myRole.isEmpty()) && gameState.getClientsList() != null) {
+        // Determinar mi rol - SOLO si no está asignado o si es una nueva partida
+        if (gameState.getClientsList() != null) {
             for (ClientInfo client : gameState.getClientsList()) {
                 if (client.getName().equals(playerName)) {
-                    myRole = client.getRole();
-                    System.out.println("Mi rol asignado: " + myRole);
+                    // ✅ SIEMPRE actualizar el rol desde el servidor
+                    String newRole = client.getRole();
+                    if (!newRole.equals(myRole)) {
+                        System.out.println("🎭 Actualizando mi rol: " + myRole + " → " + newRole);
+                        myRole = newRole;
+                    }
                     break;
                 }
             }
@@ -263,7 +261,7 @@ public class Main extends Application {
         
         // Si hay una invitación pendiente, NO cambiar de vista
         if (invitationPending) {
-            System.out.println("Invitación pendiente a " + pendingOpponent + ". Manteniendo vista de espera.");
+            System.out.println("⏳ Invitación pendiente a " + pendingOpponent + ". Manteniendo vista actual.");
             return;
         }
         
@@ -271,32 +269,55 @@ public class Main extends Application {
         Platform.runLater(() -> {
             if (gameState.getGame() != null) {
                 String status = gameState.getGame().getStatus();
-                System.out.println("Estado del juego: " + status);
+                String currentView = UtilsViews.getActiveView();
                 
+                System.out.println("🔄 Estado del juego: " + status + " - Vista actual: " + currentView);
+                
+                // Solo cambiar si es necesario
                 switch (status) {
                     case "waiting":
-                        UtilsViews.setView("ViewOpponentSelection");
+                        if (!"ViewOpponentSelection".equals(currentView)) {
+                            UtilsViews.setView("ViewOpponentSelection");
+                        }
                         updateOpponentSelection(gameState);
                         break;
                     case "countdown":
-                        UtilsViews.setView("ViewCountdown");
-                        startCountdown();
+                        if (!"ViewCountdown".equals(currentView)) {
+                            System.out.println("🎮 Cambiando a Countdown desde updateGameState()");
+                            UtilsViews.setView("ViewCountdown");
+                            startCountdown();
+                        }
                         break;
                     case "playing":
-                        UtilsViews.setView("ViewGame");
+                        if (!"ViewGame".equals(currentView)) {
+                            System.out.println("🎮 Iniciando NUEVA partida - Reseteando estado");
+                            UtilsViews.setView("ViewGame");
+                            
+                            // ✅ RESETEAR estado del juego antes de empezar
+                            CtrlGame gameCtrl = (CtrlGame) UtilsViews.getController("ViewGame");
+                            if (gameCtrl != null) {
+                                gameCtrl.resetGameState();
+                            }
+                        }
                         updateGameView();
                         break;
                     case "win":
                     case "draw":
-                        UtilsViews.setView("ViewResult");
+                        if (!"ViewResult".equals(currentView)) {
+                            UtilsViews.setView("ViewResult");
+                        }
                         updateResultView();
                         break;
                     default:
-                        UtilsViews.setView("ViewOpponentSelection");
+                        if (!"ViewOpponentSelection".equals(currentView)) {
+                            UtilsViews.setView("ViewOpponentSelection");
+                        }
                         updateOpponentSelection(gameState);
                 }
             } else {
-                UtilsViews.setView("ViewOpponentSelection");
+                if (!"ViewOpponentSelection".equals(UtilsViews.getActiveView())) {
+                    UtilsViews.setView("ViewOpponentSelection");
+                }
                 updateOpponentSelection(gameState);
             }
         });
@@ -308,6 +329,8 @@ public class Main extends Application {
                     invitation.getString("invitationType") : "received";
         
         Platform.runLater(() -> {
+            System.out.println("📩 Invitación - Tipo: " + type + " De: " + fromPlayer);
+            
             if ("received".equals(type)) {
                 CtrlOpponentSelection selectionCtrl = (CtrlOpponentSelection) 
                     UtilsViews.getController("ViewOpponentSelection");
@@ -319,20 +342,22 @@ public class Main extends Application {
                 invitationPending = false;
                 pendingOpponent = "";
                 
-                System.out.println("Invitación ACEPTADA por " + fromPlayer);
-                UtilsViews.setViewAnimating("ViewCountdown");
+                System.out.println("✅ Invitación ACEPTADA por " + fromPlayer);
                 
-                CtrlCountdown countdownCtrl = (CtrlCountdown) 
-                    UtilsViews.getController("ViewCountdown");
-                if (countdownCtrl != null) {
-                    countdownCtrl.startCountdownSequential(3);
+                // NO iniciar countdown aquí - esperar al mensaje del servidor
+                UtilsViews.setViewAnimating("ViewWaitingRoom");
+                
+                CtrlWaitingRoom waitingCtrl = (CtrlWaitingRoom) 
+                    UtilsViews.getController("ViewWaitingRoom");
+                if (waitingCtrl != null) {
+                    waitingCtrl.updateStatus("Partida aceptada. Iniciando...");
                 }
             } else if ("rejected".equals(type)) {
                 // Limpiar flag de invitación pendiente
                 invitationPending = false;
                 pendingOpponent = "";
                 
-                System.out.println("Invitación RECHAZADA por " + fromPlayer);
+                System.out.println("❌ Invitación RECHAZADA por " + fromPlayer);
                 UtilsViews.setViewAnimating("ViewOpponentSelection");
                 
                 CtrlOpponentSelection selectionCtrl = (CtrlOpponentSelection) 
@@ -348,11 +373,18 @@ public class Main extends Application {
         int count = countdownMsg.has("count") ? countdownMsg.getInt("count") : 3;
         
         Platform.runLater(() -> {
-            UtilsViews.setView("ViewCountdown");
-            CtrlCountdown countdownCtrl = (CtrlCountdown) 
-                UtilsViews.getController("ViewCountdown");
+            System.out.println("🔄 Cambiando a vista Countdown desde handleCountdown()");
+            
+            // Solo cambiar vista si no estamos ya en countdown
+            if (!"ViewCountdown".equals(UtilsViews.getActiveView())) {
+                UtilsViews.setView("ViewCountdown");
+            }
+            
+            CtrlCountdown countdownCtrl = (CtrlCountdown) UtilsViews.getController("ViewCountdown");
             if (countdownCtrl != null) {
-                countdownCtrl.startCountdownSequential(count);
+                countdownCtrl.startCountdown();
+            } else {
+                System.err.println("❌ Controlador Countdown no encontrado");
             }
         });
     }
@@ -397,10 +429,12 @@ public class Main extends Application {
     }
     
     private static void startCountdown() {
-        CtrlCountdown countdownCtrl = (CtrlCountdown) 
-            UtilsViews.getController("ViewCountdown");
+        CtrlCountdown countdownCtrl = (CtrlCountdown) UtilsViews.getController("ViewCountdown");
         if (countdownCtrl != null) {
-            countdownCtrl.startCountdownSequential(3);
+            System.out.println("🎯 Iniciando countdown desde Main.startCountdown()");
+            countdownCtrl.startCountdown();
+        } else {
+            System.err.println("❌ No se pudo obtener el controlador Countdown en startCountdown()");
         }
     }
     

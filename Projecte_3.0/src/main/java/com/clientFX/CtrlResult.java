@@ -46,9 +46,11 @@ public class CtrlResult implements Initializable {
         System.out.println("Método handlePlayAgain ejecutado");
         
         try {
-            // Limpiar el estado actual del juego
+            // ✅ LIMPIAR COMPLETAMENTE el estado para nueva partida
             Main.currentGameState = null;
-            Main.myRole = "";
+            Main.myRole = ""; // ⭐ IMPORTANTE: Resetear el rol
+            Main.invitationPending = false;
+            Main.pendingOpponent = "";
             
             // Enviar mensaje al servidor para volver al lobby
             JSONObject backToLobbyMsg = new JSONObject();
@@ -60,7 +62,7 @@ public class CtrlResult implements Initializable {
             // Cambiar a la vista de selección de oponentes
             UtilsViews.setViewAnimating("ViewOpponentSelection");
             
-            System.out.println("Volviendo a la selección de oponentes");
+            System.out.println("🔄 Volviendo a selección de oponentes - Estado reseteado");
             
         } catch (Exception e) {
             System.err.println("Error en handlePlayAgain: " + e.getMessage());

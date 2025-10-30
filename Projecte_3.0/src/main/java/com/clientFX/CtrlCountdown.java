@@ -15,125 +15,61 @@ public class CtrlCountdown implements Initializable {
     private Label lblCountdown;
     
     private Timeline countdownTimeline;
-    private int count = 3;
+    private int currentCount = 3;
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        System.out.println("CtrlCountdown inicializado");
-        // El countdown se inicia cuando se muestra esta vista
+        System.out.println("🔧 CtrlCountdown inicializado");
     }
     
-    public void startCountdown(int startCount) {
-        count = startCount;
-        System.out.println("Iniciando countdown desde: " + count);
+    public void startCountdown() {
+        System.out.println("🚀 INICIANDO COUNTDOWN");
         
-        // Mostrar el primer número inmediatamente
-        lblCountdown.setText(String.valueOf(count));
+        // Detener y limpiar timeline anterior completamente
+        stopCountdown();
         
+        currentCount = 3;
+        lblCountdown.setText(String.valueOf(currentCount));
+        
+        // Crear timeline con KeyFrames EXPLÍCITOS para cada número
         countdownTimeline = new Timeline();
         
-        // Crear keyframes para cada número del countdown
-        for (int i = count; i > 0; i--) {
-            final int currentNumber = i;
-            KeyFrame keyFrame = new KeyFrame(
-                Duration.seconds(count - i), // Tiempo desde el inicio
-                event -> {
-                    lblCountdown.setText(String.valueOf(currentNumber));
-                    System.out.println("Countdown: " + currentNumber);
-                }
-            );
-            countdownTimeline.getKeyFrames().add(keyFrame);
-        }
+        // KeyFrame para 3 → 2
+        KeyFrame frame3to2 = new KeyFrame(
+            Duration.seconds(1),
+            e -> {
+                currentCount = 2;
+                lblCountdown.setText("2");
+                System.out.println("🔢 Countdown: 2");
+            }
+        );
         
-        // Añadir el frame final para "¡GO!"
-        KeyFrame goFrame = new KeyFrame(
-            Duration.seconds(count),
-            event -> {
+        // KeyFrame para 2 → 1  
+        KeyFrame frame2to1 = new KeyFrame(
+            Duration.seconds(2),
+            e -> {
+                currentCount = 1;
+                lblCountdown.setText("1");
+                System.out.println("🔢 Countdown: 1");
+            }
+        );
+        
+        // KeyFrame para 1 → GO
+        KeyFrame frame1toGO = new KeyFrame(
+            Duration.seconds(3),
+            e -> {
                 lblCountdown.setText("¡GO!");
-                System.out.println("Countdown: ¡GO!");
+                System.out.println("🎯 Countdown: ¡GO!");
                 
-                // Esperar un momento antes de cambiar a la vista del juego
-                Main.pauseDuring(1000, () -> {
-                    System.out.println("Countdown terminado, cambiando a juego...");
-                    // La transición se manejará automáticamente con el próximo serverData
+                // Pequeña pausa antes de la transición automática
+                Main.pauseDuring(500, () -> {
+                    System.out.println("✅ Countdown COMPLETADO");
                 });
             }
         );
-        countdownTimeline.getKeyFrames().add(goFrame);
         
-        countdownTimeline.play();
-    }
-    
-    // Método alternativo más simple
-    public void startCountdownSimple(int startCount) {
-        count = startCount;
-        System.out.println("Iniciando countdown simple desde: " + count);
-        
-        lblCountdown.setText(String.valueOf(count));
-        
-        countdownTimeline = new Timeline();
-        countdownTimeline.setCycleCount(startCount + 1); // +1 para incluir el "¡GO!"
-        
-        KeyFrame keyFrame = new KeyFrame(Duration.seconds(1), event -> {
-            if (count > 1) {
-                count--;
-                lblCountdown.setText(String.valueOf(count));
-                System.out.println("Countdown: " + count);
-            } else if (count == 1) {
-                lblCountdown.setText("¡GO!");
-                System.out.println("Countdown: ¡GO!");
-                count = 0;
-            }
-        });
-        
-        countdownTimeline.getKeyFrames().add(keyFrame);
-        countdownTimeline.play();
-    }
-    
-    // Método con Timeline separado para mejor control
-    public void startCountdownSequential(int startCount) {
-        count = startCount;
-        System.out.println("Iniciando countdown secuencial desde: " + count);
-        
-        // Detener cualquier timeline anterior
-        stopCountdown();
-        
-        // Mostrar el primer número
-        lblCountdown.setText(String.valueOf(count));
-        
-        // Crear una nueva timeline
-        countdownTimeline = new Timeline();
-        
-        // Añadir cada paso del countdown
-        for (int i = count - 1; i >= 0; i--) {
-            final int remaining = i;
-            double time = (count - i); // 1, 2, 3 segundos...
-            
-            KeyFrame frame;
-            if (remaining > 0) {
-                frame = new KeyFrame(
-                    Duration.seconds(time),
-                    e -> {
-                        lblCountdown.setText(String.valueOf(remaining));
-                        System.out.println("Countdown: " + remaining);
-                    }
-                );
-            } else {
-                frame = new KeyFrame(
-                    Duration.seconds(time),
-                    e -> {
-                        lblCountdown.setText("¡GO!");
-                        System.out.println("Countdown: ¡GO!");
-                        
-                        // Esperar y luego la transición se hará automáticamente
-                        Main.pauseDuring(800, () -> {
-                            System.out.println("Transición automática a juego...");
-                        });
-                    }
-                );
-            }
-            countdownTimeline.getKeyFrames().add(frame);
-        }
+        countdownTimeline.getKeyFrames().addAll(frame3to2, frame2to1, frame1toGO);
+        countdownTimeline.setCycleCount(1); // Solo una ejecución
         
         countdownTimeline.play();
     }
@@ -143,5 +79,7 @@ public class CtrlCountdown implements Initializable {
             countdownTimeline.stop();
             countdownTimeline = null;
         }
+        currentCount = 3;
+        lblCountdown.setText("3"); // Reset visual
     }
 }

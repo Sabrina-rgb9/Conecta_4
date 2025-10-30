@@ -44,8 +44,7 @@ public class GameSession {
         initializeBoard();
         initializeGameObjects();
         
-        // Inicializar posición del mouse del jugador 1
-        playerMousePositions.put(player1Name, new double[]{0, 0});
+        System.out.println("🎮 Nueva sesión: " + player1Name + " será ROJO (R)");
     }
     
     private void initializeBoard() {
@@ -83,12 +82,10 @@ public class GameSession {
         this.gameStarted = true;
         this.countdownInProgress = true;
         
-        // Inicializar posición del mouse del jugador 2
-        playerMousePositions.put(player2Name, new double[]{0, 0});
+        System.out.println("🎮 Jugador 2 unido: " + player2Name + " será AMARILLO (Y)");
+        System.out.println("🎯 Partida: " + player1Name + " (R) vs " + player2Name + " (Y)");
         
-        System.out.println("Partida iniciada: " + player1Name + " (R) vs " + player2Name + " (Y)");
-        
-        // Enviar estado INMEDIATAMENTE con status: "countdown"
+        // Enviar estado INMEDIATAMENTE con roles asignados
         broadcastGameState();
         
         // Luego iniciar countdown
@@ -111,20 +108,24 @@ public class GameSession {
     }
     
     private void sendCountdown() {
+        System.out.println("📤 [Sesión " + sessionId + "] Enviando countdown a jugadores");
+        
         JSONObject countdownMsg = new JSONObject();
         countdownMsg.put("type", "countdown");
         countdownMsg.put("count", 3);
         
         broadcastToPlayers(countdownMsg.toString());
+        System.out.println("✅ [Sesión " + sessionId + "] Countdown enviado");
         
         // Programar inicio del juego después del countdown
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
+                System.out.println("⏰ [Sesión " + sessionId + "] Timer terminado - iniciando juego");
                 startGame();
             }
-        }, 4000);
+        }, 4000); // 4 segundos total
     }
     
     private void startGame() {
