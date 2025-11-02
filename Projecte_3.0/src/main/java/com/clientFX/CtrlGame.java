@@ -12,6 +12,7 @@ import javafx.scene.layout.Pane;
 import javafx.scene.shape.Circle;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.application.Platform; // ⭐ IMPORTANTE: Añadir este import
 import javafx.util.Duration;
 
 import org.json.JSONObject;
@@ -106,7 +107,7 @@ public class CtrlGame implements Initializable {
             this.startTime = System.currentTimeMillis();
             
             System.out.println("🎬 CREANDO ANIMACIÓN: " + color + " en columna " + column + 
-                            " desde Y=" + startY + " hasta Y=" + endY);
+                              " desde Y=" + startY + " hasta Y=" + endY);
             
             startAnimation();
         }
@@ -138,7 +139,7 @@ public class CtrlGame implements Initializable {
                 System.out.println("✅ ANIMACIÓN COMPLETADA: " + pieceColor + " en columna " + targetColumn);
             }
             
-            // Forzar redibujado
+            // Forzar redibujado en el hilo de JavaFX
             Platform.runLater(() -> {
                 if (Main.currentGameState != null) {
                     render(Main.currentGameState);
@@ -365,47 +366,128 @@ public class CtrlGame implements Initializable {
     // ===== ANIMACIONES =====
 
     private void startFallingAnimation(String pieceColor, int column, int row) {
-        double startY = BOARD_OFFSET_Y - CELL_SIZE;
+        System.out.println("🎬 INICIANDO ANIMACIÓN para " + pieceColor + " en columna " + column + ", fila " + row);
+        
+        // Calcular coordenadas - empezar más arriba para mejor efecto visual
+        double startY = BOARD_OFFSET_Y - CELL_SIZE * 2; // Empieza 2 celdas arriba del tablero
         double endY = row * CELL_SIZE + BOARD_OFFSET_Y + CELL_SIZE / 2;
         
-        FallingAnimation animation = new FallingAnimation(pieceColor, column, row, startY, endY);
-        activeAnimations.add(animation);
+        System.out.println("📏 Coordenadas animación: desde Y=" + startY + " hasta Y=" + endY);
         
-        Main.pauseDuring(1000, () -> activeAnimations.removeIf(anim -> !anim.isActive));
-    }
-
-    private void detectAndAnimateMoves(GameState gameState) {
-        if (gameState.getGame() == null || gameState.getGame().getBoard() == null) return;
+        // Verificar que no haya ya una animación para esta posición
+        boolean alreadyAnimating = activeAnimations.stream()
+            .anyMatch(anim -> anim.targetColumn == column && anim.targetRow == row);
         
-        String[][] currentBoard = gameState.getGame().getBoard();
-        for (int col = 0; col < COLUMNS; col++) {
-            for (int row = 0; row < ROWS; row++) {
-                String cell = currentBoard[row][col];
-                if (cell != null && !cell.trim().isEmpty() && isNewPiece(col, row, cell)) {
-                    startFallingAnimation(cell, col, row);
+        if (!alreadyAnimating) {
+            // Crear y añadir animación
+            FallingAnimation animation = new FallingAnimation(pieceColor, column, row, startY, endY);
+            activeAnimations.add(animation);
+            
+            // Limpiar animaciones completadas después de un tiempo
+            Main.pauseDuring(2000, () -> {
+                int before = activeAnimations.size();
+                activeAnimations.removeIf(anim -> !anim.isActive);
+                int after = activeAnimations.size();
+                if (before != after) {
+                    System.out.println("🧹 Limpiadas " + (before - after) + " animaciones completadas");
                 }
-            }
+            });
+        } else {
+            System.out.println("⚠️ Ya hay una animación en curso para esta posición");
         }
     }
 
-    private boolean isNewPiece(int col, int row, String piece) {
-        if (Main.currentGameState == null || Main.currentGameState.getGame() == null) return true;
+    /**
+     * Detecta movimientos nuevos y inicia animaciones
+     */
+    private void detectAndAnimateMoves(GameState gameState) {
+        if (gameState.getGame() == null || gameState.getGame().getBoard() == null) {
+            System.out.println("❌ No hay datos del tablero para animar");
+            return;
+        }
         
-        String[][] previousBoard = Main.currentGameState.getGame().getBoard();
-        if (previousBoard == null || row >= previousBoard.length || col >= previousBoard[0].length) return true;
+        String[][] currentBoard = gameState.getGame().getBoard();
+        String[][] previousBoard = getPreviousBoard();
         
-        return previousBoard[row][col] == null || previousBoard[row][col].trim().isEmpty();
+        System.out.println("🔍 Buscando movimientos para animar...");
+        int newPiecesFound = 0;
+        
+        // Buscar fichas nuevas en el tablero
+        for (int col = 0; col < COLUMNS; col++) {
+            for (int row = 0; row < ROWS; row++) {
+                String currentCell = currentBoard[row][col];
+                String previousCell = (previousBoard != null && row < previousBoard.length && col < previousBoard[row].length) 
+                                    ? previousBoard[row][col] : " ";
+                
+                // Si hay una ficha nueva en esta posición
+                if (isNewPiece(currentCell, previousCell)) {
+                    System.out.println("🆕 Ficha nueva detectada: " + currentCell + " en (" + col + "," + row + ")");
+                    startFallingAnimation(currentCell, col, row);
+                    newPiecesFound++;
+                }
+            }
+        }
+        
+        if (newPiecesFound > 0) {
+            System.out.println("🎯 Total de fichas nuevas para animar: " + newPiecesFound);
+        }
+    }
+
+    /**
+     * Obtiene el tablero anterior del estado del juego
+     */
+    private String[][] getPreviousBoard() {
+        if (Main.currentGameState == null || Main.currentGameState.getGame() == null) {
+            return null;
+        }
+        return Main.currentGameState.getGame().getBoard();
+    }
+
+    /**
+     * Verifica si una celda contiene una ficha nueva
+     */
+    private boolean isNewPiece(String currentCell, String previousCell) {
+        // La celda actual debe tener una ficha
+        if (currentCell == null || currentCell.trim().isEmpty()) {
+            return false;
+        }
+        
+        // La celda anterior debe estar vacía o ser diferente
+        if (previousCell == null || previousCell.trim().isEmpty()) {
+            return true;
+        }
+        
+        return !currentCell.equals(previousCell);
     }
 
     // ===== ACTUALIZACIÓN DE ESTADO =====
 
     public void updateGameState(GameState gameState) {
+        System.out.println("🔄 ACTUALIZANDO ESTADO DEL JUEGO");
+        
+        // Guardar el estado anterior ANTES de actualizar
+        String[][] previousBoard = getPreviousBoard();
+        
+        // Actualizar información del oponente
         updateOpponentInfo(gameState);
         updatePlayerInfo();
+        
+        // ⭐ ACTUALIZAR EL ESTADO ACTUAL PRIMERO
+        Main.currentGameState = gameState;
+        
+        // ⭐ LUEGO detectar animaciones (con el estado anterior guardado)
         detectAndAnimateMoves(gameState);
         
-        if (shouldResetPieces(gameState)) initializePieces();
+        // Reinicializar fichas si es necesario
+        if (shouldResetPieces(gameState)) {
+            System.out.println("🔄 Reinicializando fichas...");
+            initializePieces();
+        }
+        
+        // Renderizar
         render(gameState);
+        
+        System.out.println("✅ Estado del juego actualizado");
     }
 
     public void updateOpponentDragInfo(boolean dragging, double x, double y, String color) {
@@ -437,13 +519,29 @@ public class CtrlGame implements Initializable {
     // ===== RENDERIZADO =====
 
     public void render(GameState gameState) {
+        // Asegurarse de que estamos en el hilo de JavaFX
+        if (!Platform.isFxApplicationThread()) {
+            Platform.runLater(() -> render(gameState));
+            return;
+        }
+        
         gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
         drawBoard();
         drawPieces(gameState);
         drawMouseCursors();
         drawHoverEffects();
         drawDraggedPieces();
+        
+        // ⭐ DIBUJAR ANIMACIONES ANTES de las fichas normales para que se vean encima
         drawActiveAnimations();
+        
+        drawWinLine(gameState);
+        
+        // Debug: mostrar info de animaciones activas
+        if (!activeAnimations.isEmpty()) {
+            gc.setFill(Color.BLACK);
+            gc.fillText("Animaciones activas: " + activeAnimations.size(), 10, 20);
+        }
     }
 
     private void drawBoard() {
