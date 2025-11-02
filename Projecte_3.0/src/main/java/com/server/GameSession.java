@@ -99,6 +99,8 @@ public class GameSession {
             System.out.println("Mouse actualizado - " + playerName + ": (" + x + ", " + y + ")");
             // Enviar update a ambos jugadores
             broadcastGameState();
+        } else {
+            System.out.println("x Jugador no encontrado en sesión: " + playerName);
         }
     }
     

@@ -21,7 +21,7 @@ public class GameWebSocketServer extends WebSocketServer {
     private Map<String, GameSession> gameSessions = new ConcurrentHashMap<>();
     private Map<WebSocket, String> clientToSession = new ConcurrentHashMap<>();
 
-    private static final int UPDATE_INTERVAL = 100;
+    private static final int UPDATE_INTERVAL = 1000;
     
     public GameWebSocketServer(int port) {
         super(new InetSocketAddress(port));
@@ -368,6 +368,7 @@ public class GameWebSocketServer extends WebSocketServer {
             GameSession session = gameSessions.get(sessionId);
             if (session != null) {
                 session.updatePlayerMousePosition(playerName, x, y);
+                session.broadcastGameState();
             }
         } else {
             // Actualizar posición del mouse global (fuera de partida)
@@ -385,7 +386,7 @@ public class GameWebSocketServer extends WebSocketServer {
             String playerName = connectedClients.get(conn);
             String sessionId = clientToSession.get(conn);
             
-            system.out.println("Drag from " + playerName + ": " + isDragging + " at (" + x + "," + y + ") color=" + pieceColor);
+            System.out.println("Drag from " + playerName + ": " + isDragging + " at (" + x + "," + y + ") color=" + pieceColor);
             
             if (sessionId != null) {
                 GameSession session = gameSessions.get(sessionId);
