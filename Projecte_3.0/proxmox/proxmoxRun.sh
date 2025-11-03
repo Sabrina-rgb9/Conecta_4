@@ -24,7 +24,7 @@ fi
 
 echo "Generant el fitxer JAR..."
 rm -f "$JAR_PATH"
-./run.sh com.server.ServerMain build  # ⭐ CORREGIDO: Usar ServerMain
+./run.sh com.server.ServerMain build  # CAMBIO A SERVER MAIN
 
 if [[ ! -f "$JAR_PATH" ]]; then
     echo "Error: No s'ha trobat l'arxiu JAR: $JAR_PATH"
@@ -48,7 +48,7 @@ if [[ $? -ne 0 ]]; then
     exit 1
 fi
 
-ssh -t -p 20127 $SSH_OPTS "$USER@ieticloudpro.ieti.cat" << 'EOF'  # ⭐ CORREGIDO: Usar comillas simples
+ssh -t -p 20127 $SSH_OPTS "$USER@ieticloudpro.ieti.cat" << 'EOF'  
     cd "$HOME/"
 
     # Detener proceso anterior - buscar por clase correcta
