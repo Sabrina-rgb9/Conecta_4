@@ -13,45 +13,74 @@
             style="-fx-background-color: linear-gradient(to bottom, #f2d16b, #d3a243);">
    <children>
       <VBox alignment="CENTER" spacing="25" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
-            AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0"
-            style="-fx-background-color: rgba(255,255,255,0.3); -fx-background-radius: 20; -fx-padding: 40;">
+            AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
          <children>
-            <Label text="Selecciona un oponente" alignment="CENTER" textFill="#1e1e2f">
+            <!-- Título principal -->
+            <Label text="Connecta 4" alignment="CENTER" textFill="#1e1e2f">
                <font>
-                  <Font name="Segoe UI Semibold" size="26.0"/>
+                  <Font name="Segoe UI Black" size="40.0"/>
                </font>
                <effect>
-                  <DropShadow color="#00000040" radius="4.0"/>
+                  <DropShadow color="#00000040" radius="6.0"/>
                </effect>
                <VBox.margin>
-                  <Insets top="16.0"/>
+                  <Insets top="30.0" bottom="10.0"/>
                </VBox.margin>
             </Label>
 
-            <Label fx:id="lblStatus" text="Cargando jugadores..." alignment="CENTER" textFill="#3b3b3b">
-               <font>
-                  <Font name="Segoe UI" size="16.0"/>
-               </font>
-            </Label>
+            <!-- Panel de selección de oponente -->
+            <VBox alignment="CENTER" spacing="20" 
+                  style="-fx-background-color: rgba(255,255,255,0.35); -fx-background-radius: 20; -fx-padding: 30;">
+               <effect>
+                  <DropShadow color="#00000030" radius="8.0"/>
+               </effect>
 
-            <ListView fx:id="listPlayers" prefWidth="320" prefHeight="240"
-                      style="-fx-background-color: linear-gradient(to bottom, #ffffff, #e6e6e6);
-                             -fx-border-color: #2c3e50;
-                             -fx-border-radius: 10;
-                             -fx-background-radius: 10;
-                             -fx-padding: 5;">
+               <Label text="Selecciona un oponent" alignment="CENTER" textFill="#1e1e2f">
+                  <font>
+                     <Font name="Segoe UI Semibold" size="24.0"/>
+                  </font>
+                  <effect>
+                     <DropShadow color="#00000030" radius="3.0"/>
+                  </effect>
+               </Label>
+
+               <Label fx:id="lblStatus" text="Carregant jugadors..." alignment="CENTER" textFill="#2c3e50"
+                      style="-fx-font-size: 15px; -fx-font-weight: bold;">
+                  <effect>
+                     <DropShadow color="#00000020" radius="2.0"/>
+                  </effect>
+               </Label>
+
+               <ListView fx:id="listPlayers" prefWidth="350" prefHeight="280"
+                         style="-fx-background-color: linear-gradient(to bottom, #ffffff, #f8f9fa);
+                                -fx-border-color: #2c3e50;
+                                -fx-border-width: 2;
+                                -fx-border-radius: 15;
+                                -fx-background-radius: 15;
+                                -fx-padding: 8;">
+                  <effect>
+                     <DropShadow color="#00000040" radius="8.0"/>
+                  </effect>
+               </ListView>
+
+               <Label text="Fes doble clic en un jugador per convidar" alignment="CENTER" textFill="#1e1e2f"
+                      style="-fx-font-style: italic; -fx-font-size: 13px;">
+                  <effect>
+                     <DropShadow color="#00000020" radius="2.0"/>
+                  </effect>
+               </Label>
+            </VBox>
+
+            <!-- Texto inferior -->
+            <Label text="Tria amb qui vols jugar" 
+                   textFill="#1e1e2f" 
+                   style="-fx-font-style: italic; -fx-font-size: 13px;">
                <VBox.margin>
-                  <Insets left="50.0" right="50.0"/>
+                  <Insets top="20.0" bottom="30.0"/>
                </VBox.margin>
                <effect>
-                  <DropShadow color="#00000040" radius="8.0"/>
+                  <DropShadow color="#00000020" radius="2.0"/>
                </effect>
-            </ListView>
-
-            <Label text="Haz doble click en un jugador para invitar" alignment="CENTER" textFill="#1e1e2f">
-               <font>
-                  <Font name="Segoe UI Italic" size="14.0"/>
-               </font>
             </Label>
          </children>
       </VBox>
