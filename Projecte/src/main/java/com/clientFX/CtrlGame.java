@@ -337,6 +337,7 @@ public class CtrlGame implements Initializable {
         isDragging = false;
         sendDragInfo(false, 0, 0, "");
         if (Main.currentGameState != null) render(Main.currentGameState);
+
     }
 
     private void markPieceAsUsed() {
@@ -536,6 +537,20 @@ public class CtrlGame implements Initializable {
         drawActiveAnimations();
         
         drawWinLine(gameState);
+
+        for (FallingAnimation anim : activeAnimations) {
+            if (anim.isActive) anim.draw(gc);
+        }
+        activeAnimations.removeIf(a -> !a.isActive);
+
+        // Dibujar puntero del oponente
+        if (opponentMouseX > 0 && opponentMouseY > 0) {
+            gc.setStroke(Color.web("#00BFFF"));
+            gc.setLineWidth(2);
+            gc.strokeOval(opponentMouseX - 8, opponentMouseY - 8, 16, 16);
+            gc.strokeLine(opponentMouseX, opponentMouseY - 10, opponentMouseX, opponentMouseY + 10);
+            gc.strokeLine(opponentMouseX - 10, opponentMouseY, opponentMouseX + 10, opponentMouseY);
+        }
         
         // Debug: mostrar info de animaciones activas
         if (!activeAnimations.isEmpty()) {

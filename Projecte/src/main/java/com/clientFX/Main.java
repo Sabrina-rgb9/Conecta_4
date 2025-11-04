@@ -45,8 +45,8 @@ public class Main extends Application {
         
         stage.setScene(scene);
         stage.setTitle("Conecta 4");
-        stage.setMinWidth(800);
-        stage.setMinHeight(600);
+        stage.setMinWidth(1000);
+        stage.setMinHeight(800);
         stage.show();
         
         // Ir a vista de configuración inicial
