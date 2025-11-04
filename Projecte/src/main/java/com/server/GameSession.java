@@ -439,18 +439,67 @@ public class GameSession {
         return player == player1 || player == player2;
     }
     
-    public void removePlayer(WebSocket player) {
-        if (player == player1) {
-            player1 = null;
-        } else if (player == player2) {
-            player2 = null;
-        }
+public void removePlayer(WebSocket player) {
+    String disconnectedPlayerName = getPlayerName(player);
+    System.out.println("🎯 GameSession.removePlayer() llamado para: " + disconnectedPlayerName);
+    
+    if (player == player1) {
+        player1 = null;
+        System.out.println("🔌 Jugador 1 desconectado: " + disconnectedPlayerName);
+    } else if (player == player2) {
+        player2 = null;
+        System.out.println("🔌 Jugador 2 desconectado: " + disconnectedPlayerName);
+    }
+    
+    // Solo marcar como finished si el juego había empezado
+    if (gameStarted && !gameFinished) {
+        gameFinished = true;
+        winner = "disconnected";
+        System.out.println("🎮 Partida marcada como terminada por desconexión");
         
-        // Si un jugador se desconecta, terminar la partida
-        if (gameStarted && !gameFinished) {
-            gameFinished = true;
-            winner = getPlayerName(player == player1 ? player2 : player1);
-            broadcastGameState();
+        // El mensaje real se envía desde GameWebSocketServer
+        broadcastGameState();
+    }
+}
+
+// ⭐ NUEVO MÉTODO: Enviar mensaje de desconexión directamente al jugador restante
+private void sendDisconnectionMessage(WebSocket remainingPlayer, String disconnectedPlayer, String remainingPlayerName) {
+    try {
+        JSONObject disconnectMsg = new JSONObject();
+        disconnectMsg.put("type", "playerDisconnected");
+            disconnectMsg.put("disconnectedPlayer", disconnectedPlayer);
+            disconnectMsg.put("remainingPlayer", remainingPlayerName);
+            disconnectMsg.put("sessionId", sessionId);
+            disconnectMsg.put("timestamp", System.currentTimeMillis());
+            
+            System.out.println("📤 ENVIANDO MENSAJE DE DESCONEXIÓN a: " + remainingPlayerName);
+            System.out.println("📝 Contenido: " + disconnectMsg.toString());
+            
+            if (remainingPlayer != null && remainingPlayer.isOpen()) {
+                remainingPlayer.send(disconnectMsg.toString());
+                System.out.println("✅ Mensaje de desconexión enviado exitosamente");
+            } else {
+                System.out.println("❌ No se pudo enviar - Conexión cerrada");
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Error enviando mensaje de desconexión: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    // ⭐ MÉTODO MEJORADO: Enviar mensaje de desconexión
+    private void broadcastDisconnectionMessage(String disconnectedPlayer, String remainingPlayer) {
+        try {
+            JSONObject disconnectMsg = new JSONObject();
+            disconnectMsg.put("type", "playerDisconnected");
+            disconnectMsg.put("disconnectedPlayer", disconnectedPlayer);
+            disconnectMsg.put("remainingPlayer", remainingPlayer);
+            disconnectMsg.put("sessionId", sessionId);
+            disconnectMsg.put("timestamp", System.currentTimeMillis());
+            
+            System.out.println("📤 Enviando mensaje de desconexión: " + disconnectedPlayer + " -> " + remainingPlayer);
+            broadcastToPlayers(disconnectMsg.toString());
+        } catch (Exception e) {
+            System.err.println("❌ Error enviando mensaje de desconexión: " + e.getMessage());
         }
     }
     

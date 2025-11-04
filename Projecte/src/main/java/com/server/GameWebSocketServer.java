@@ -48,25 +48,65 @@ public class GameWebSocketServer extends WebSocketServer {
     
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
-        System.out.println("Conexión cerrada: " + conn.getRemoteSocketAddress());
+        System.out.println("=== 🔌 INICIANDO PROCESO DE DESCONEXIÓN ===");
+        System.out.println("📡 Conexión: " + conn.getRemoteSocketAddress());
+        System.out.println("📝 Razón: " + reason + " (remoto: " + remote + ")");
         
-        String playerName = connectedClients.remove(conn);
+        String playerName = connectedClients.get(conn);
         String sessionId = clientToSession.get(conn);
         
-        if (sessionId != null) {
-            GameSession session = gameSessions.get(sessionId);
-            if (session != null) {
-                session.removePlayer(conn);
-                if (!session.hasTwoPlayers()) {
-                    gameSessions.remove(sessionId);
-                }
-            }
-            clientToSession.remove(conn);
-        }
+        System.out.println("👤 Jugador: " + playerName);
+        System.out.println("🎮 Sesión: " + sessionId);
         
-        broadcastPlayerList();
-    }
-    
+        if (playerName != null) {
+            connectedClients.remove(conn);
+            
+            if (sessionId != null) {
+                GameSession session = gameSessions.get(sessionId);
+                if (session != null) {
+                    System.out.println("📤 Notificando desconexión a la sesión...");
+                    // Guardar info antes de remover
+                    WebSocket otherPlayer = (session.getPlayer1() == conn) ? session.getPlayer2() : session.getPlayer1();
+                    String otherPlayerName = (otherPlayer != null) ? session.getPlayerName(otherPlayer) : null;
+                    
+                    session.removePlayer(conn);
+                    
+                    // ⭐ ENVIAR MENSAJE DIRECTAMENTE DESDE AQUÍ
+                    if (otherPlayer != null && otherPlayer.isOpen() && otherPlayerName != null) {
+                        System.out.println("🎯 Enviando mensaje directo a: " + otherPlayerName);
+                        try {
+                            JSONObject disconnectMsg = new JSONObject();
+                            disconnectMsg.put("type", "playerDisconnected");
+                            disconnectMsg.put("disconnectedPlayer", playerName);
+                            disconnectMsg.put("remainingPlayer", otherPlayerName);
+                            disconnectMsg.put("sessionId", sessionId);
+                            
+                            otherPlayer.send(disconnectMsg.toString());
+                            System.out.println("✅ Mensaje de desconexión enviado exitosamente");
+                        } catch (Exception e) {
+                            System.err.println("❌ Error enviando mensaje: " + e.getMessage());
+                        }
+                    }
+                    
+                    if (!session.hasTwoPlayers()) {
+                        System.out.println("🗑️ Marcando sesión para eliminar: " + sessionId);
+                        // Eliminar después de un tiempo
+                        new Timer().schedule(new TimerTask() {
+                            @Override
+                            public void run() {
+                                gameSessions.remove(sessionId);
+                                System.out.println("🧹 Sesión eliminada: " + sessionId);
+                            }
+                        }, 3000);
+                    }
+                }
+                clientToSession.remove(conn);
+            }
+            
+            broadcastPlayerList();
+        }
+        System.out.println("=== 🔌 PROCESO DE DESCONEXIÓN COMPLETADO ===");
+    }    
     @Override
     public void onMessage(WebSocket conn, String message) {
         try {

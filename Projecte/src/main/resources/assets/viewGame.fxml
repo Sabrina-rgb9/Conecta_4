@@ -101,5 +101,6 @@
                 <DropShadow color="#00000030" radius="3.0"/>
             </effect>
         </Label>
+
     </children>
 </AnchorPane>

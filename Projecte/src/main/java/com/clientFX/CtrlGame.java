@@ -7,6 +7,7 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.Cursor;
+import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
 import javafx.scene.layout.Pane;
 import javafx.scene.shape.Circle;
@@ -586,36 +587,89 @@ public class CtrlGame implements Initializable {
 
     private void checkOpponentDisconnected(GameState gameState) {
         boolean opponentStillConnected = false;
+        String currentOpponentName = "";
         
         if (gameState.getClientsList() != null) {
             for (ClientInfo client : gameState.getClientsList()) {
                 if (!client.getName().equals(Main.playerName)) {
                     opponentStillConnected = true;
+                    currentOpponentName = client.getName();
                     break;
                 }
             }
         }
         
-        if (!opponentStillConnected) {
-            Platform.runLater(() -> showOpponentDisconnectedDialog());
+        // Solo mostrar diálogo si el oponente estaba conectado y ahora no lo está
+        if (!opponentStillConnected && !this.opponentName.isEmpty() && !this.opponentName.equals("DESCONECTADO")) {
+            System.out.println("🔌 Detección local: " + this.opponentName + " se desconectó");
+            Platform.runLater(() -> showOpponentDisconnectedDialog(this.opponentName));
+        }
+        
+        // Actualizar el nombre del oponente
+        if (opponentStillConnected) {
+            this.opponentName = currentOpponentName;
+        } else if (!this.opponentName.contains("DESCONECTADO")) {
+            this.opponentName = currentOpponentName; // Mantener el nombre para el diálogo
         }
     }
 
-    private void showOpponentDisconnectedDialog() {
-        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION);
-        alert.setTitle("Jugador desconectado");
-        alert.setHeaderText(null);
-        alert.setContentText("El otro jugador se ha desconectado.");
+    public void showOpponentDisconnectedDialog(String opponentName) {
+        System.out.println("🔌 Mostrando diálogo de desconexión en ViewGame para: " + opponentName);
         
-        javafx.scene.control.ButtonType btnMenu = new javafx.scene.control.ButtonType("Volver al menú principal");
+        // Asegurarse de que estamos en el hilo de JavaFX
+        if (!Platform.isFxApplicationThread()) {
+            Platform.runLater(() -> showOpponentDisconnectedDialog(opponentName));
+            return;
+        }
+        
+        // Crear un diálogo personalizado
+        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.WARNING);
+        alert.setTitle("Jugador Desconectado");
+        alert.setHeaderText("¡" + opponentName + " se ha desconectado!");
+        alert.setContentText("El otro jugador ha abandonado la partida.\n\nLa partida ha terminado.");
+        
+        // Personalizar el diálogo
+        DialogPane dialogPane = alert.getDialogPane();
+        dialogPane.setStyle("-fx-background-color: #f8f9fa; -fx-border-color: #dc3545; -fx-border-width: 2;");
+        dialogPane.getStyleClass().add("disconnect-dialog");
+        
+        // Botón único para volver al menú
+        javafx.scene.control.ButtonType btnMenu = new javafx.scene.control.ButtonType("Volver al Menú Principal", 
+                                                                                    javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
         alert.getButtonTypes().setAll(btnMenu);
         
+        // Mostrar diálogo y manejar respuesta
         alert.showAndWait().ifPresent(response -> {
-            if (response == btnMenu) {
-                // Volver a la vista de configuración
-                UtilsViews.setView("ViewConfig");
+            System.out.println("👤 Usuario confirmó volver al menú después de desconexión");
+            
+            // Limpiar estado del juego
+            resetGameState();
+            
+            // Volver a la vista de configuración
+            UtilsViews.setView("ViewConfig");
+            
+            // Opcional: Mostrar mensaje en la vista de configuración
+            CtrlConfig configCtrl = (CtrlConfig) UtilsViews.getController("ViewConfig");
+            if (configCtrl != null) {
+                configCtrl.showMessage("Partida terminada - " + opponentName + " se desconectó", 
+                                    javafx.scene.paint.Color.ORANGE);
             }
         });
+        
+        // Actualizar la interfaz para mostrar que el oponente se desconectó
+        updateUIForDisconnection(opponentName);
+    }
+
+    private void updateUIForDisconnection(String opponentName) {
+        // Actualizar labels para mostrar la desconexión
+        lblOpponentName.setText(opponentName + " (DESCONECTADO)");
+        lblOpponentName.setStyle("-fx-text-fill: #dc3545; -fx-font-weight: bold;");
+        lblTurnIndicator.setText("PARTIDA TERMINADA");
+        lblTurnIndicator.setStyle("-fx-text-fill: #dc3545; -fx-font-weight: bold; -fx-font-size: 16px;");
+        
+        // Deshabilitar interacción si es el turno del jugador
+        paneYourPieces.setDisable(true);
+        paneYourPieces.setOpacity(0.6);
     }
 
     /**
@@ -952,6 +1006,8 @@ public class CtrlGame implements Initializable {
         System.out.println("👀 Vista Game mostrada");
     }
 
+    
+
     /**
      * Limpia animaciones completadas
      */
@@ -963,6 +1019,41 @@ public class CtrlGame implements Initializable {
         if (before != after) {
             System.out.println("🧹 Animaciones limpiadas: " + (before - after));
         }
+    }
+
+    // Método para que el usuario pueda salir manualmente
+    @FXML
+    private void handleExitGame() {
+        System.out.println("🎮 Usuario solicitó salir del juego");
+        
+        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Salir del Juego");
+        alert.setHeaderText("¿Estás seguro de que quieres salir?");
+        alert.setContentText("El otro jugador será notificado de tu salida.");
+        
+        javafx.scene.control.ButtonType btnYes = new javafx.scene.control.ButtonType("Sí, salir");
+        javafx.scene.control.ButtonType btnNo = new javafx.scene.control.ButtonType("No, continuar");
+        alert.getButtonTypes().setAll(btnYes, btnNo);
+        
+        alert.showAndWait().ifPresent(response -> {
+            if (response == btnYes) {
+                System.out.println("🚨 Usuario confirmó salir - notificando al servidor");
+                // Enviar mensaje de salida al servidor
+                if (Main.wsClient != null && Main.wsClient.isOpen()) {
+                    try {
+                        JSONObject exitMsg = new JSONObject();
+                        exitMsg.put("type", "clientExit");
+                        exitMsg.put("playerName", Main.playerName);
+                        Main.wsClient.safeSend(exitMsg.toString());
+                    } catch (Exception e) {
+                        System.err.println("❌ Error enviando mensaje de salida: " + e.getMessage());
+                    }
+                }
+                
+                // Volver al menú
+                UtilsViews.setView("ViewConfig");
+            }
+        });
     }
 
     // Llama a este método cuando se cierre la vista o reinicie el juego

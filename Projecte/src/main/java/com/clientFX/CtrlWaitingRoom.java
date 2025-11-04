@@ -1,5 +1,6 @@
 package com.clientFX;
 
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Label;
@@ -32,5 +33,19 @@ public class CtrlWaitingRoom implements Initializable {
         } else {
             progressIndicator.setVisible(false);
         }
+    }
+
+    public void handleOpponentDisconnected(String opponentName) {
+        System.out.println("🔌 Oponente se desconectó durante la sala de espera: " + opponentName);
+        
+        Platform.runLater(() -> {
+            // Mostrar mensaje y volver a selección de oponente
+            updateStatus(opponentName + " se desconectó. Volviendo al menú...");
+            
+            // Pequeño delay antes de volver
+            Main.pauseDuring(2000, () -> {
+                UtilsViews.setView("ViewOpponentSelection");
+            });
+        });
     }
 }

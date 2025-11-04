@@ -108,6 +108,8 @@ public class Main extends Application {
             });
         }
     }
+
+    
     
     private static void handleServerMessage(String message) {
         try {
@@ -131,20 +133,28 @@ public class Main extends Application {
                     case "error":
                         handleErrorMessage(jsonMessage);
                         break;
-                    case "dragUpdate":  // ⭐ CORRECCIÓN: Cambiado de "clientDragPiece" a "dragUpdate"
+                    case "dragUpdate":
                         handleDragUpdate(jsonMessage);
                         break;
-                    case "mouseUpdate":  // ⭐ NUEVO: Manejar actualizaciones de mouse
+                    case "mouseUpdate":
                         handleMouseUpdate(jsonMessage);
+                        break;
+                    case "playerDisconnected": 
+                        System.out.println("🔌 MENSAJE DE DESCONEXIÓN DETECTADO");
+                        handlePlayerDisconnected(jsonMessage);
                         break;
                     default:
                         System.out.println("❓ Tipo de mensaje desconocido: " + type);
                 }
+            } else {
+                System.out.println("📨 Mensaje sin tipo: " + message);
             }
         } catch (Exception e) {
             System.err.println("❌ Error parsing message: " + e.getMessage());
+            System.err.println("📦 Mensaje que causó error: " + message);
         }
-    }  
+    }    
+    
     private static void handleServerData(JSONObject serverData) {
         try {
             GameState gameState = parseGameState(serverData);
@@ -577,6 +587,71 @@ public class Main extends Application {
         }).start();
     }
     
+    // ⭐ MÉTODO SIMPLIFICADO: Manejar desconexión de jugador
+    private static void handlePlayerDisconnected(JSONObject disconnectMsg) {
+        System.out.println("🎯🎯🎯 MENSAJE DE DESCONEXIÓN RECIBIDO 🎯🎯🎯");
+        System.out.println("📦 CONTENIDO COMPLETO: " + disconnectMsg.toString(4));
+        
+        try {
+            String disconnectedPlayer = disconnectMsg.getString("disconnectedPlayer");
+            String remainingPlayer = disconnectMsg.getString("remainingPlayer");
+            
+            System.out.println("🔍 ANALIZANDO:");
+            System.out.println("   - Jugador desconectado: " + disconnectedPlayer);
+            System.out.println("   - Jugador restante: " + remainingPlayer);
+            System.out.println("   - Yo soy: " + Main.playerName);
+            System.out.println("   - Coincide?: " + Main.playerName.equals(remainingPlayer));
+            
+            Platform.runLater(() -> {
+                System.out.println("📍 En hilo JavaFX - Vista actual: " + UtilsViews.getActiveView());
+                
+                if (Main.playerName.equals(remainingPlayer)) {
+                    System.out.println("🚨 SOY EL JUGADOR RESTANTE - MOSTRANDO DIÁLOGO");
+                    showDisconnectionDialog(disconnectedPlayer);
+                } else {
+                    System.out.println("👀 No soy el jugador restante, ignorando...");
+                }
+            });
+            
+        } catch (Exception e) {
+            System.err.println("❌ Error procesando mensaje de desconexión: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // ⭐ NUEVO MÉTODO: Mostrar diálogo simple
+    private static void showDisconnectionDialog(String disconnectedPlayer) {
+        System.out.println("🖼️ Creando diálogo de desconexión...");
+        
+        try {
+            javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION);
+            alert.setTitle("Jugador Desconectado");
+            alert.setHeaderText("El jugador " + disconnectedPlayer + " se ha desconectado");
+            alert.setContentText("La partida ha terminado. Volviendo al menú principal...");
+            
+            // Configurar para que se cierre automáticamente después de mostrar
+            alert.show();
+            
+            // Cerrar después de 3 segundos y volver al menú
+            new Thread(() -> {
+                try {
+                    Thread.sleep(3000);
+                    Platform.runLater(() -> {
+                        alert.close();
+                        System.out.println("🔙 Volviendo a ViewConfig...");
+                        UtilsViews.setView("ViewConfig");
+                    });
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }).start();
+            
+        } catch (Exception e) {
+            System.err.println("❌ Error mostrando diálogo: " + e.getMessage());
+            // Fallback: volver directamente al menú
+            UtilsViews.setView("ViewConfig");
+        }
+    }
     public static void pauseDuring(int millis, Runnable callback) {
         new Thread(() -> {
             try {
@@ -590,9 +665,28 @@ public class Main extends Application {
 
     @Override
     public void stop() {
+        System.out.println("=== 🚨 APLICACIÓN CERRÁNDOSE ===");
+        
+        // Enviar mensaje de desconexión al servidor ANTES de cerrar
+        if (wsClient != null && wsClient.isOpen()) {
+            try {
+                System.out.println("📤 Enviando mensaje de desconexión al servidor...");
+                JSONObject exitMsg = new JSONObject();
+                exitMsg.put("type", "clientExit");
+                exitMsg.put("playerName", playerName);
+                wsClient.safeSend(exitMsg.toString());
+                
+                // Pequeña pausa para asegurar que el mensaje se envía
+                Thread.sleep(500);
+            } catch (Exception e) {
+                System.err.println("❌ Error enviando mensaje de desconexión: " + e.getMessage());
+            }
+        }
+        
         if (wsClient != null) {
             wsClient.forceExit();
         }
+        System.out.println("=== 🚨 APLICACIÓN CERRADA ===");
     }
 
     public static void main(String[] args) {
