@@ -2,48 +2,33 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.effect.DropShadow?>
+<?import javafx.scene.control.ListView?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.paint.Color?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane fx:id="anchor" minHeight="500.0" minWidth="600.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.clientFX.CtrlCountdown"
-            style="-fx-background-color: linear-gradient(to bottom, #f2d16b, #d3a243);">
+<AnchorPane fx:id="anchor" minHeight="500.0" minWidth="600.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.clientFX.CtrlOpponentSelection">
    <children>
-      <VBox alignment="CENTER" spacing="25" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
-            AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0"
-            style="-fx-background-color: rgba(255,255,255,0.3); -fx-background-radius: 20; -fx-padding: 40;">
+      <VBox alignment="CENTER" spacing="20" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
          <children>
-            <Label text="La partida comenzará en:" alignment="CENTER" textFill="#1e1e2f">
+            <Label text="Selecciona un oponente" alignment="CENTER">
                <font>
-                  <Font name="Segoe UI Semibold" size="22.0"/>
+                  <Font size="24.0"/>
                </font>
-               <effect>
-                  <DropShadow color="#00000040" radius="5.0"/>
-               </effect>
-            </Label>
-
-            <Label fx:id="lblCountdown" text="3" alignment="CENTER" textFill="#2c3e50">
-               <font>
-                  <Font name="Segoe UI Black" size="100.0"/>
-               </font>
-               <effect>
-                  <DropShadow color="#00000050" radius="12.0"/>
-               </effect>
                <VBox.margin>
-                  <Insets top="10.0"/>
+                  <Insets top="16.0"/>
                </VBox.margin>
             </Label>
-
-            <Label text="¡Prepárate para jugar!" alignment="CENTER" textFill="#1e1e2f">
-               <font>
-                  <Font name="Segoe UI Italic" size="16.0"/>
-               </font>
-               <effect>
-                  <DropShadow color="#00000030" radius="4.0"/>
-               </effect>
-            </Label>
+            
+            <Label fx:id="lblStatus" text="Cargando jugadores..." alignment="CENTER"/>
+            
+            <ListView fx:id="listPlayers" prefWidth="300" prefHeight="200">
+               <VBox.margin>
+                  <Insets left="50.0" right="50.0"/>
+               </VBox.margin>
+            </ListView>
+            
+            <Label text="Haz doble click en un jugador para invitar" alignment="CENTER"/>
          </children>
       </VBox>
    </children>
