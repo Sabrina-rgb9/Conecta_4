@@ -43,6 +43,8 @@ public class GameSession {
         this.currentTurn = player1Name;
         initializeBoard();
         initializeGameObjects();
+
+        playerMousePositions.put(player1Name, new double[]{0, 0});
         
         System.out.println("🎮 Nueva sesión: " + player1Name + " será ROJO (R)");
     }
@@ -84,6 +86,9 @@ public class GameSession {
         
         System.out.println("🎮 Jugador 2 unido: " + player2Name + " será AMARILLO (Y)");
         System.out.println("🎯 Partida: " + player1Name + " (R) vs " + player2Name + " (Y)");
+
+        // Inicializar posición del mouse del jugador 2
+        playerMousePositions.put(player2Name, new double[]{0, 0});
         
         // Enviar estado INMEDIATAMENTE con roles asignados
         broadcastGameState();

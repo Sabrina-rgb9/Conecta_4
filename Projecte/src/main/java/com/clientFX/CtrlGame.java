@@ -403,26 +403,23 @@ public class CtrlGame implements Initializable {
     /**
      * Detecta movimientos nuevos y inicia animaciones
      */
-    private void detectAndAnimateMoves(GameState gameState) {
+    private void detectAndAnimateMoves(GameState gameState, String[][] previousBoard) {
         if (gameState.getGame() == null || gameState.getGame().getBoard() == null) {
             System.out.println("❌ No hay datos del tablero para animar");
             return;
         }
         
         String[][] currentBoard = gameState.getGame().getBoard();
-        String[][] previousBoard = getPreviousBoard();
-        
-        System.out.println("🔍 Buscando movimientos para animar...");
         int newPiecesFound = 0;
         
-        // Buscar fichas nuevas en el tablero
+        System.out.println("🔍 Buscando movimientos para animar...");
+
         for (int col = 0; col < COLUMNS; col++) {
             for (int row = 0; row < ROWS; row++) {
                 String currentCell = currentBoard[row][col];
                 String previousCell = (previousBoard != null && row < previousBoard.length && col < previousBoard[row].length) 
-                                    ? previousBoard[row][col] : " ";
-                
-                // Si hay una ficha nueva en esta posición
+                                    ? previousBoard[row][col] : null;
+
                 if (isNewPiece(currentCell, previousCell)) {
                     System.out.println("🆕 Ficha nueva detectada: " + currentCell + " en (" + col + "," + row + ")");
                     startFallingAnimation(currentCell, col, row);
@@ -435,6 +432,7 @@ public class CtrlGame implements Initializable {
             System.out.println("🎯 Total de fichas nuevas para animar: " + newPiecesFound);
         }
     }
+
 
     /**
      * Obtiene el tablero anterior del estado del juego
@@ -469,17 +467,39 @@ public class CtrlGame implements Initializable {
         System.out.println("🔄 ACTUALIZANDO ESTADO DEL JUEGO");
         
         // Guardar el estado anterior ANTES de actualizar
-        String[][] previousBoard = getPreviousBoard();
+        // String[][] previousBoard = getPreviousBoard();
         
         // Actualizar información del oponente
         updateOpponentInfo(gameState);
         updatePlayerInfo();
+
+        // Detectar si el oponente se desconectó
+        checkOpponentDisconnected(gameState);
         
         // ⭐ ACTUALIZAR EL ESTADO ACTUAL PRIMERO
-        Main.currentGameState = gameState;
+        // Main.currentGameState = gameState;
         
         // ⭐ LUEGO detectar animaciones (con el estado anterior guardado)
-        detectAndAnimateMoves(gameState);
+        // detectAndAnimateMoves(gameState);
+
+        // Guardar copia del tablero anterior
+        String[][] previousBoard = null;
+        if (Main.currentGameState != null && Main.currentGameState.getGame() != null) {
+            String[][] board = Main.currentGameState.getGame().getBoard();
+            if (board != null) {
+                previousBoard = new String[ROWS][COLUMNS];
+                for (int r = 0; r < ROWS; r++) {
+                    previousBoard[r] = Arrays.copyOf(board[r], COLUMNS);
+                }
+            }
+        }
+
+        // Actualizar el estado actual
+        Main.currentGameState = gameState;
+
+        // Detectar animaciones usando el tablero anterior
+        detectAndAnimateMoves(gameState, previousBoard);
+
         
         // Reinicializar fichas si es necesario
         if (shouldResetPieces(gameState)) {
@@ -491,6 +511,40 @@ public class CtrlGame implements Initializable {
         render(gameState);
         
         System.out.println("✅ Estado del juego actualizado");
+    }
+
+    private void checkOpponentDisconnected(GameState gameState) {
+        boolean opponentStillConnected = false;
+        
+        if (gameState.getClientsList() != null) {
+            for (ClientInfo client : gameState.getClientsList()) {
+                if (!client.getName().equals(Main.playerName)) {
+                    opponentStillConnected = true;
+                    break;
+                }
+            }
+        }
+        
+        if (!opponentStillConnected) {
+            Platform.runLater(() -> showOpponentDisconnectedDialog());
+        }
+    }
+
+    private void showOpponentDisconnectedDialog() {
+        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION);
+        alert.setTitle("Jugador desconectado");
+        alert.setHeaderText(null);
+        alert.setContentText("El otro jugador se ha desconectado.");
+        
+        javafx.scene.control.ButtonType btnMenu = new javafx.scene.control.ButtonType("Volver al menú principal");
+        alert.getButtonTypes().setAll(btnMenu);
+        
+        alert.showAndWait().ifPresent(response -> {
+            if (response == btnMenu) {
+                // Volver a la vista de configuración
+                UtilsViews.setView("ViewConfig");
+            }
+        });
     }
 
     public void updateOpponentDragInfo(boolean dragging, double x, double y, String color) {

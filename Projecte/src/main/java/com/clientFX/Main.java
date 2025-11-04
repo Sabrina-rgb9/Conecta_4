@@ -134,7 +134,6 @@ public class Main extends Application {
                     case "clientDragPiece":
                         handleDragUpdate(jsonMessage);
                         break;
-
                     default:
                         System.out.println("❓ Tipo de mensaje desconocido: " + type);
                 }
@@ -262,6 +261,8 @@ public class Main extends Application {
                 }
             }
         }
+
+        
         
         // Si hay una invitación pendiente, NO cambiar de vista
         if (invitationPending) {
@@ -326,6 +327,7 @@ public class Main extends Application {
             }
         });
     }
+
     
     private static void handleInvitation(JSONObject invitation) {
         String fromPlayer = invitation.getString("from");
