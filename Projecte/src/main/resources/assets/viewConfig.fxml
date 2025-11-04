@@ -1,43 +1,63 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.layout.*?>
-<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane xmlns:fx="http://javafx.com/fxml"
-            xmlns="http://javafx.com/javafx/8"
-            fx:controller="com.clientFX.CtrlConfig"
-            prefWidth="800" prefHeight="600"
-            style="-fx-background-color: linear-gradient(to bottom right, #e0f7fa, #80deea);">
+<AnchorPane fx:id="anchor" minHeight="500.0" minWidth="600.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.clientFX.CtrlConfig">
+   <children>
+      <VBox alignment="CENTER" spacing="10" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+         <children>
+            <Label text="Server setup" alignment="CENTER">
+               <font>
+                  <Font size="36.0"/>
+               </font>
+               <VBox.margin>
+                  <Insets top="16.0"/>
+               </VBox.margin>
+            </Label>
 
-    <VBox alignment="CENTER" spacing="20" AnchorPane.leftAnchor="0" AnchorPane.rightAnchor="0"
-          AnchorPane.topAnchor="0" AnchorPane.bottomAnchor="0">
+            <!-- Campo Nombre del jugador -->
+            <HBox alignment="CENTER" spacing="10">
+                <Label text="Jugador:"/>
+                <TextField fx:id="txtPlayerName" promptText="Nom del jugador" prefWidth="200"/>
+            </HBox>
 
-        <Label text="Connecta 4" style="-fx-font-weight: bold; -fx-text-fill: #004d40;">
-            <font><Font size="40"/></font>
-        </Label>
+            <!-- Campo Protocolo -->
+            <HBox alignment="CENTER" spacing="10">
+                <Label text="Protocol:"/>
+                <TextField fx:id="txtProtocol" promptText="ws o wss" prefWidth="200"/>
+            </HBox>
 
-        <GridPane hgap="15" vgap="15" alignment="CENTER">
-            <columnConstraints>
-                <ColumnConstraints halignment="RIGHT" minWidth="100"/>
-                <ColumnConstraints halignment="LEFT" minWidth="200"/>
-            </columnConstraints>
+            <!-- Campo Host -->
+            <HBox alignment="CENTER" spacing="10">
+                <Label text="Server IP:"/>
+                <TextField fx:id="txtHost" promptText="localhost o IP" prefWidth="200"/>
+            </HBox>
 
-            <Label text="Protocol:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-            <TextField fx:id="txtProtocol" promptText="ws" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+            <!-- Campo Port -->
+            <HBox alignment="CENTER" spacing="10">
+                <Label text="Port:"/>
+                <TextField fx:id="txtPort" promptText="3000" prefWidth="200"/>
+            </HBox>
 
-            <Label text="Host:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-            <TextField fx:id="txtHost" promptText="localhost" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+            <!-- BotÃ³n Conectar -->
+            <Button text="Connect" fx:id="btnConnect" onAction="#connectToServer" prefWidth="150"/>
 
-            <Label text="Port:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-            <TextField fx:id="txtPort" promptText="3000" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
-        </GridPane>
+            <!-- Label para mensajes -->
+            <Label fx:id="txtMessage" textFill="RED"/>
 
-        <Button fx:id="btnConnect" text="Connectar"
-                style="-fx-background-color: #26a69a; -fx-text-fill: white; -fx-font-weight: bold; 
-                       -fx-background-radius: 12; -fx-padding: 10 25;"/>
-
-        <Label fx:id="lblMessage" text="" style="-fx-font-size: 14px; -fx-text-fill: #d32f2f;"/>
-
-    </VBox>
+            <!-- Botones Local / Proxmox -->
+            <HBox alignment="CENTER" spacing="20">
+                <Button text="Local" onAction="#setConfigLocal" prefWidth="100"/>
+                <Button text="Proxmox" onAction="#setConfigProxmox" prefWidth="100"/>
+            </HBox>
+         </children>
+      </VBox>
+   </children>
 </AnchorPane>
