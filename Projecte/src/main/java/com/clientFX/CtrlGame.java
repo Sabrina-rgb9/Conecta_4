@@ -84,6 +84,9 @@ public class CtrlGame implements Initializable {
     /**
      * Maneja la animación de caída de fichas
      */
+    /**
+     * Maneja la animación de caída de fichas optimizada
+     */
     private class FallingAnimation {
         String pieceColor;
         int targetColumn;
@@ -94,7 +97,7 @@ public class CtrlGame implements Initializable {
         boolean isActive;
         Timeline timeline;
         long startTime;
-        final long DURATION = 1000; // 1 segundo completo para la caída
+        final long DURATION = 800; // 0.8 segundos para mejor fluidez
         
         public FallingAnimation(String color, int column, int targetRow, double startY, double endY) {
             this.pieceColor = color;
@@ -106,40 +109,60 @@ public class CtrlGame implements Initializable {
             this.isActive = true;
             this.startTime = System.currentTimeMillis();
             
-            System.out.println("🎬 CREANDO ANIMACIÓN: " + color + " en columna " + column + 
-                              " desde Y=" + startY + " hasta Y=" + endY);
+            System.out.println("🎬 CREANDO ANIMACIÓN OPTIMIZADA: " + color + " en columna " + column + 
+                            " desde Y=" + startY + " hasta Y=" + endY);
             
-            startAnimation();
+            startOptimizedAnimation();
         }
         
-        private void startAnimation() {
+        private void startOptimizedAnimation() {
             timeline = new Timeline();
-            KeyFrame keyFrame = new KeyFrame(
+            
+            // Crear keyframes para una animación suave
+            KeyFrame updateFrame = new KeyFrame(
                 Duration.millis(16), // ~60 FPS
                 e -> updateAnimation()
             );
-            timeline.getKeyFrames().add(keyFrame);
-            timeline.setCycleCount(Timeline.INDEFINITE);
+            
+            timeline.getKeyFrames().add(updateFrame);
+            timeline.setCycleCount(1); // Solo una ejecución
             timeline.play();
         }
         
         private void updateAnimation() {
+            if (!isActive) return;
+            
             long currentTime = System.currentTimeMillis();
             long elapsed = currentTime - startTime;
             double progress = Math.min(1.0, (double) elapsed / DURATION);
             
-            // Interpolación suave (ease-out)
+            // Interpolación ease-out para efecto más natural
             double easedProgress = 1 - Math.pow(1 - progress, 3);
             currentY = startY + (endY - startY) * easedProgress;
+            
+            // Efecto de "rebote" al final
+            if (progress >= 0.9) {
+                double bounceProgress = (progress - 0.9) / 0.1;
+                double bounce = Math.sin(bounceProgress * Math.PI * 4) * 5 * (1 - bounceProgress);
+                currentY += bounce;
+            }
             
             if (progress >= 1.0) {
                 currentY = endY;
                 isActive = false;
                 timeline.stop();
-                System.out.println("✅ ANIMACIÓN COMPLETADA: " + pieceColor + " en columna " + targetColumn);
+                System.out.println("✅ ANIMACIÓN COMPLETADA: " + pieceColor + " en (" + targetColumn + "," + targetRow + ")");
+                
+                // Limpiar esta animación
+                Platform.runLater(() -> {
+                    activeAnimations.remove(this);
+                    if (Main.currentGameState != null) {
+                        render(Main.currentGameState);
+                    }
+                });
             }
             
-            // Forzar redibujado en el hilo de JavaFX
+            // Forzar redibujado
             Platform.runLater(() -> {
                 if (Main.currentGameState != null) {
                     render(Main.currentGameState);
@@ -151,27 +174,56 @@ public class CtrlGame implements Initializable {
             if (!isActive) return;
             
             double x = targetColumn * CELL_SIZE + BOARD_OFFSET_X + CELL_SIZE / 2;
-            double radius = (CELL_SIZE - 4) / 2;
+            double radius = (CELL_SIZE - 10) / 2; // Un poco más pequeño para mejor visual
+            
             Color color = "R".equals(pieceColor) ? Color.RED : Color.YELLOW;
             
-            // Dibujar ficha animada con efecto de sombra
+            // Sombra que se hace más definida cerca del final
+            long currentTime = System.currentTimeMillis();
+            long elapsed = currentTime - startTime;
+            double progress = Math.min(1.0, (double) elapsed / DURATION);
+            
+            // Dibujar sombra (se hace más oscura al acercarse al fondo)
+            double shadowAlpha = 0.2 + (progress * 0.3);
+            gc.setFill(Color.rgb(0, 0, 0, shadowAlpha));
+            double shadowOffset = 2 + (3 * progress);
+            gc.fillOval(x - radius + shadowOffset, currentY - radius/3 + shadowOffset, radius * 2, radius * 1.5);
+            
+            // Dibujar ficha principal
             gc.setFill(color.darker());
-            gc.fillOval(x - radius + 2, currentY - radius + 2, radius * 2, radius * 2);
+            gc.fillOval(x - radius + 1, currentY - radius + 1, radius * 2, radius * 2);
             
             gc.setFill(color);
             gc.fillOval(x - radius, currentY - radius, radius * 2, radius * 2);
             
+            // Efecto de brillo
             gc.setFill(color.brighter());
             gc.fillOval(x - radius/2, currentY - radius/2, radius, radius);
             
+            // Borde
             gc.setStroke(Color.BLACK);
-            gc.setLineWidth(2);
+            gc.setLineWidth(1.5);
             gc.strokeOval(x - radius, currentY - radius, radius * 2, radius * 2);
             
-            // Dibujar trazo de la caída (efecto visual)
-            gc.setStroke(Color.rgb(0, 0, 0, 0.3));
-            gc.setLineWidth(1);
-            gc.strokeLine(x, startY, x, currentY);
+            // Dibujar estela de la caída (solo durante la primera mitad de la animación)
+            if (progress < 0.5) {
+                double trailLength = (startY - currentY) * 0.3;
+                double trailStartY = currentY - trailLength;
+                
+                gc.setFill(Color.rgb(
+                    (int)(color.getRed() * 255),
+                    (int)(color.getGreen() * 255),
+                    (int)(color.getBlue() * 255),
+                    0.3 * (1 - progress * 2)
+                ));
+                
+                for (double i = 0; i < trailLength; i += 3) {
+                    double trailY = trailStartY + i;
+                    double trailProgress = i / trailLength;
+                    double trailRadius = radius * (0.3 + 0.7 * trailProgress);
+                    gc.fillOval(x - trailRadius, trailY - trailRadius, trailRadius * 2, trailRadius * 2);
+                }
+            }
         }
     }
 
@@ -369,17 +421,17 @@ public class CtrlGame implements Initializable {
     // ===== ANIMACIONES =====
 
     private void startFallingAnimation(String pieceColor, int column, int row) {
-        System.out.println("🎬 INICIANDO ANIMACIÓN para " + pieceColor + " en columna " + column + ", fila " + row);
+        System.out.println("🎬 INICIANDO ANIMACIÓN MEJORADA para " + pieceColor + " en (" + column + "," + row + ")");
         
         // Calcular coordenadas - empezar más arriba para mejor efecto visual
-        double startY = BOARD_OFFSET_Y - CELL_SIZE * 2; // Empieza 2 celdas arriba del tablero
+        double startY = BOARD_OFFSET_Y - CELL_SIZE * 3; // Empieza 3 celdas arriba del tablero
         double endY = row * CELL_SIZE + BOARD_OFFSET_Y + CELL_SIZE / 2;
         
         System.out.println("📏 Coordenadas animación: desde Y=" + startY + " hasta Y=" + endY);
         
         // Verificar que no haya ya una animación para esta posición
         boolean alreadyAnimating = activeAnimations.stream()
-            .anyMatch(anim -> anim.targetColumn == column && anim.targetRow == row);
+            .anyMatch(anim -> anim.targetColumn == column && anim.targetRow == row && anim.isActive);
         
         if (!alreadyAnimating) {
             // Crear y añadir animación
@@ -387,21 +439,25 @@ public class CtrlGame implements Initializable {
             activeAnimations.add(animation);
             
             // Limpiar animaciones completadas después de un tiempo
-            Main.pauseDuring(2000, () -> {
-                int before = activeAnimations.size();
-                activeAnimations.removeIf(anim -> !anim.isActive);
-                int after = activeAnimations.size();
-                if (before != after) {
-                    System.out.println("🧹 Limpiadas " + (before - after) + " animaciones completadas");
+            Timeline cleanupTimer = new Timeline(new KeyFrame(
+                Duration.seconds(2),
+                e -> {
+                    int before = activeAnimations.size();
+                    activeAnimations.removeIf(anim -> !anim.isActive);
+                    int after = activeAnimations.size();
+                    if (before != after) {
+                        System.out.println("🧹 Limpiadas " + (before - after) + " animaciones completadas");
+                    }
                 }
-            });
+            ));
+            cleanupTimer.play();
         } else {
-            System.out.println("⚠️ Ya hay una animación en curso para esta posición");
+            System.out.println("⚠️ Ya hay una animación en curso para la posición (" + column + "," + row + ")");
         }
     }
 
     /**
-     * Detecta movimientos nuevos y inicia animaciones
+     * Detecta movimientos nuevos y inicia animaciones de forma optimizada
      */
     private void detectAndAnimateMoves(GameState gameState, String[][] previousBoard) {
         if (gameState.getGame() == null || gameState.getGame().getBoard() == null) {
@@ -414,15 +470,33 @@ public class CtrlGame implements Initializable {
         
         System.out.println("🔍 Buscando movimientos para animar...");
 
+        // Buscar desde abajo hacia arriba para animar las fichas en el orden correcto
         for (int col = 0; col < COLUMNS; col++) {
-            for (int row = 0; row < ROWS; row++) {
-                String currentCell = currentBoard[row][col];
-                String previousCell = (previousBoard != null && row < previousBoard.length && col < previousBoard[row].length) 
-                                    ? previousBoard[row][col] : null;
+            for (int row = ROWS - 1; row >= 0; row--) {
+                // ⭐ CORRECCIÓN: Crear copias finales de las variables para usar en la lambda
+                final int currentCol = col;
+                final int currentRow = row;
+                
+                String currentCell = currentBoard[currentRow][currentCol];
+                String previousCell = (previousBoard != null && currentRow < previousBoard.length && currentCol < previousBoard[currentRow].length) 
+                                    ? previousBoard[currentRow][currentCol] : null;
 
                 if (isNewPiece(currentCell, previousCell)) {
-                    System.out.println("🆕 Ficha nueva detectada: " + currentCell + " en (" + col + "," + row + ")");
-                    startFallingAnimation(currentCell, col, row);
+                    System.out.println("🆕 Ficha nueva detectada: " + currentCell + " en (" + currentCol + "," + currentRow + ")");
+                    
+                    // Pequeño delay para animaciones consecutivas
+                    int delay = newPiecesFound * 100; // 100ms entre animaciones
+                    
+                    if (delay > 0) {
+                        Timeline delayTimer = new Timeline(new KeyFrame(
+                            Duration.millis(delay),
+                            e -> startFallingAnimation(currentCell, currentCol, currentRow)
+                        ));
+                        delayTimer.play();
+                    } else {
+                        startFallingAnimation(currentCell, currentCol, currentRow);
+                    }
+                    
                     newPiecesFound++;
                 }
             }
@@ -431,10 +505,7 @@ public class CtrlGame implements Initializable {
         if (newPiecesFound > 0) {
             System.out.println("🎯 Total de fichas nuevas para animar: " + newPiecesFound);
         }
-    }
-
-
-    /**
+    }    /**
      * Obtiene el tablero anterior del estado del juego
      */
     private String[][] getPreviousBoard() {
@@ -602,35 +673,22 @@ public class CtrlGame implements Initializable {
         gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
         drawBoard();
         drawPieces(gameState);
+        
+        // ⭐ DIBUJAR ANIMACIONES PRIMERO (para que queden debajo de las fichas estáticas)
+        drawActiveAnimations();
+        
         drawMouseCursors();
         drawHoverEffects();
         drawDraggedPieces();
-        
-        // ⭐ DIBUJAR ANIMACIONES ANTES de las fichas normales para que se vean encima
-        drawActiveAnimations();
-        
         drawWinLine(gameState);
 
-        for (FallingAnimation anim : activeAnimations) {
-            if (anim.isActive) anim.draw(gc);
-        }
-        activeAnimations.removeIf(a -> !a.isActive);
-
-        // Dibujar puntero del oponente
-        if (opponentMouseX > 0 && opponentMouseY > 0) {
-            gc.setStroke(Color.web("#00BFFF"));
-            gc.setLineWidth(2);
-            gc.strokeOval(opponentMouseX - 8, opponentMouseY - 8, 16, 16);
-            gc.strokeLine(opponentMouseX, opponentMouseY - 10, opponentMouseX, opponentMouseY + 10);
-            gc.strokeLine(opponentMouseX - 10, opponentMouseY, opponentMouseX + 10, opponentMouseY);
-        }
-        
         // Debug: mostrar info de animaciones activas
         if (!activeAnimations.isEmpty()) {
             gc.setFill(Color.BLACK);
             gc.fillText("Animaciones activas: " + activeAnimations.size(), 10, 20);
         }
     }
+
 
     private void drawBoard() {
         gc.setFill(Color.BLUE);
@@ -894,7 +952,22 @@ public class CtrlGame implements Initializable {
         System.out.println("👀 Vista Game mostrada");
     }
 
+    /**
+     * Limpia animaciones completadas
+     */
+    public void cleanupCompletedAnimations() {
+        int before = activeAnimations.size();
+        activeAnimations.removeIf(anim -> !anim.isActive);
+        int after = activeAnimations.size();
+        
+        if (before != after) {
+            System.out.println("🧹 Animaciones limpiadas: " + (before - after));
+        }
+    }
+
+    // Llama a este método cuando se cierre la vista o reinicie el juego
     public void onViewHidden() {
-        System.out.println("👻 Vista Game oculta");
+        System.out.println("👻 Vista Game oculta - limpiando animaciones");
+        activeAnimations.clear();
     }
 }
