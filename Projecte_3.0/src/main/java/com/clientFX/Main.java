@@ -128,7 +128,7 @@ public class Main extends Application {
                     case "invitation":
                         handleInvitation(jsonMessage);
                         break;
-                    case "dragUpdate": 
+                    case "dragUpdate":
                         handleDragUpdate(jsonMessage);
                         break;
                     case "error":
