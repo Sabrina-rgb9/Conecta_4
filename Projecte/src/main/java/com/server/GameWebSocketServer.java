@@ -394,6 +394,7 @@ public class GameWebSocketServer extends WebSocketServer {
                     session.updatePlayerDragInfo(playerName, isDragging, x, y, pieceColor);
                 }
             }
+
         } catch (Exception e) {
             System.err.println("Error handling drag piece: " + e.getMessage());
         }

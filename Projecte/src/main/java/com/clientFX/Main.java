@@ -131,6 +131,10 @@ public class Main extends Application {
                     case "error":
                         handleErrorMessage(jsonMessage);
                         break;
+                    case "clientDragPiece":
+                        handleDragUpdate(jsonMessage);
+                        break;
+
                     default:
                         System.out.println("❓ Tipo de mensaje desconocido: " + type);
                 }

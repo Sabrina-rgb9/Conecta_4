@@ -318,7 +318,9 @@ public class CtrlGame implements Initializable {
                 msg.put("x", x);
                 msg.put("y", y);
                 msg.put("pieceColor", color);
+                msg.put("player", Main.playerName);
                 Main.wsClient.safeSend(msg.toString());
+                System.out.println("Enviando drag: " + msg.toString());
             } catch (Exception e) {
                 System.err.println("Error sending drag info: " + e.getMessage());
             }
