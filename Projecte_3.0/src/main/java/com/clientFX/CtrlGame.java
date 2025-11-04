@@ -12,13 +12,14 @@ import javafx.scene.layout.Pane;
 import javafx.scene.shape.Circle;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
-import javafx.application.Platform; // ⭐ IMPORTANTE: Añadir este import
+import javafx.application.Platform;
 import javafx.util.Duration;
 
 import org.json.JSONObject;
 import com.shared.GameState;
 import com.shared.ClientInfo;
 import com.shared.DragInfo;
+import com.shared.Move;
 
 import java.net.URL;
 import java.util.*;
@@ -34,6 +35,10 @@ public class CtrlGame implements Initializable {
     private static final int PIECE_RADIUS = 20;
     private static final int PIECE_SPACING = 25;
     private static final int PIECES_PER_ROW = 4;
+    
+    // ===== Zona de drop solo en la parte superior =====
+    private static final int DROP_ZONE_HEIGHT = 40;
+    private static final int DROP_ZONE_Y = BOARD_OFFSET_Y - DROP_ZONE_HEIGHT;
 
     // ===== COMPONENTES FXML =====
     @FXML private Canvas canvas;
@@ -69,9 +74,6 @@ public class CtrlGame implements Initializable {
 
     // ===== CLASES INTERNAS =====
 
-    /**
-     * Representa una ficha del juego
-     */
     private class GamePiece {
         String color;
         double originalX;
@@ -82,40 +84,41 @@ public class CtrlGame implements Initializable {
     }
 
     /**
-     * Maneja la animación de caída de fichas
+     * ANIMACIÓN CON FÍSICA MÁS LENTA Y VISIBLE
      */
     private class FallingAnimation {
         String pieceColor;
         int targetColumn;
         int targetRow;
-        double currentY;
-        double startY;
-        double endY;
-        boolean isActive;
+        double currentX, currentY;
+        double progress = 0;
+        boolean isActive = true;
         Timeline timeline;
-        long startTime;
-        final long DURATION = 1000; // 1 segundo completo para la caída
         
-        public FallingAnimation(String color, int column, int targetRow, double startY, double endY) {
+        double finalX, finalY;
+        double startY;
+        
+        public FallingAnimation(String color, int column, int targetRow) {
             this.pieceColor = color;
             this.targetColumn = column;
             this.targetRow = targetRow;
-            this.startY = startY;
+            
+            // Calcular posiciones
+            this.finalX = column * CELL_SIZE + BOARD_OFFSET_X + CELL_SIZE / 2;
+            this.finalY = targetRow * CELL_SIZE + BOARD_OFFSET_Y + CELL_SIZE / 2;
+            this.startY = BOARD_OFFSET_Y - CELL_SIZE * 3;
+            
+            this.currentX = finalX;
             this.currentY = startY;
-            this.endY = endY;
-            this.isActive = true;
-            this.startTime = System.currentTimeMillis();
             
-            System.out.println("🎬 CREANDO ANIMACIÓN: " + color + " en columna " + column + 
-                              " desde Y=" + startY + " hasta Y=" + endY);
-            
+            System.out.println("🎬 ANIMACIÓN INICIADA: " + color + " desde Y=" + startY + " hasta Y=" + finalY);
             startAnimation();
         }
         
         private void startAnimation() {
             timeline = new Timeline();
             KeyFrame keyFrame = new KeyFrame(
-                Duration.millis(16), // ~60 FPS
+                Duration.millis(16),
                 e -> updateAnimation()
             );
             timeline.getKeyFrames().add(keyFrame);
@@ -124,22 +127,21 @@ public class CtrlGame implements Initializable {
         }
         
         private void updateAnimation() {
-            long currentTime = System.currentTimeMillis();
-            long elapsed = currentTime - startTime;
-            double progress = Math.min(1.0, (double) elapsed / DURATION);
+            if (!isActive) return;
             
-            // Interpolación suave (ease-out)
-            double easedProgress = 1 - Math.pow(1 - progress, 3);
-            currentY = startY + (endY - startY) * easedProgress;
+            progress += 0.015; // Un poco más lento para mejor visualización
             
             if (progress >= 1.0) {
-                currentY = endY;
-                isActive = false;
-                timeline.stop();
-                System.out.println("✅ ANIMACIÓN COMPLETADA: " + pieceColor + " en columna " + targetColumn);
+                progress = 1.0;
+                completeAnimation();
+                return; // ✅ IMPORTANTE: Salir aquí para no actualizar más
             }
             
-            // Forzar redibujado en el hilo de JavaFX
+            // Interpolación con ease-out para efecto más natural
+            double easedProgress = 1 - Math.pow(1 - progress, 1.5);
+            currentY = startY + (finalY - startY) * easedProgress;
+            
+            // Forzar redibujado
             Platform.runLater(() -> {
                 if (Main.currentGameState != null) {
                     render(Main.currentGameState);
@@ -147,36 +149,84 @@ public class CtrlGame implements Initializable {
             });
         }
         
+        private void completeAnimation() {
+            System.out.println("✅ ANIMACIÓN COMPLETADA para (" + targetColumn + "," + targetRow + ")");
+            isActive = false;
+            
+            if (timeline != null) {
+                timeline.stop();
+                timeline = null;
+            }
+            
+            // ✅ LIMPIAR AUTOMÁTICAMENTE después de un breve delay
+            Platform.runLater(() -> {
+                // Forzar un último render para asegurar que se vea la ficha final
+                if (Main.currentGameState != null) {
+                    render(Main.currentGameState);
+                }
+                
+                // Programar limpieza después de 500ms
+                Main.pauseDuring(500, () -> {
+                    cleanupCompletedAnimations();
+                });
+            });
+        }
+        
         public void draw(GraphicsContext gc) {
             if (!isActive) return;
             
-            double x = targetColumn * CELL_SIZE + BOARD_OFFSET_X + CELL_SIZE / 2;
             double radius = (CELL_SIZE - 4) / 2;
             Color color = "R".equals(pieceColor) ? Color.RED : Color.YELLOW;
             
-            // Dibujar ficha animada con efecto de sombra
+            // Efecto de sombra durante la caída
+            double shadowOpacity = 0.2 * (1 - progress);
+            gc.setFill(Color.rgb(0, 0, 0, shadowOpacity));
+            gc.fillOval(currentX - radius + 2, finalY + 2, radius * 2, radius / 3);
+            
+            // Ficha principal
             gc.setFill(color.darker());
-            gc.fillOval(x - radius + 2, currentY - radius + 2, radius * 2, radius * 2);
+            gc.fillOval(currentX - radius + 2, currentY - radius + 2, radius * 2, radius * 2);
             
             gc.setFill(color);
-            gc.fillOval(x - radius, currentY - radius, radius * 2, radius * 2);
+            gc.fillOval(currentX - radius, currentY - radius, radius * 2, radius * 2);
             
+            // Highlight
             gc.setFill(color.brighter());
-            gc.fillOval(x - radius/2, currentY - radius/2, radius, radius);
+            gc.fillOval(currentX - radius/2, currentY - radius/2, radius, radius);
             
+            // Borde
             gc.setStroke(Color.BLACK);
             gc.setLineWidth(2);
-            gc.strokeOval(x - radius, currentY - radius, radius * 2, radius * 2);
+            gc.strokeOval(currentX - radius, currentY - radius, radius * 2, radius * 2);
+        }
+    }
+
+    private void cleanupCompletedAnimations() {
+        int before = activeAnimations.size();
+        
+        // ✅ LIMPIAR SOLO ANIMACIONES COMPLETADAS
+        activeAnimations.removeIf(anim -> {
+            boolean shouldRemove = !anim.isActive;
+            if (shouldRemove) {
+                System.out.println("🧹 Eliminando animación completada: (" + anim.targetColumn + "," + anim.targetRow + ")");
+            }
+            return shouldRemove;
+        });
+        
+        int after = activeAnimations.size();
+        int removed = before - after;
+        
+        if (removed > 0) {
+            System.out.println("✅ Limpiadas " + removed + " animaciones completadas");
             
-            // Dibujar trazo de la caída (efecto visual)
-            gc.setStroke(Color.rgb(0, 0, 0, 0.3));
-            gc.setLineWidth(1);
-            gc.strokeLine(x, startY, x, currentY);
+            // Forzar redibujado para limpiar visualmente
+            if (Main.currentGameState != null) {
+                render(Main.currentGameState);
+            }
         }
     }
 
     // ===== MÉTODOS DE INICIALIZACIÓN =====
-
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         gc = canvas.getGraphicsContext2D();
@@ -243,7 +293,6 @@ public class CtrlGame implements Initializable {
     }
 
     // ===== MANEJO DE EVENTOS =====
-
     private void handleCanvasMouseMove(MouseEvent event) {
         myMouseX = event.getX();
         myMouseY = event.getY();
@@ -308,7 +357,6 @@ public class CtrlGame implements Initializable {
     }
 
     // ===== LÓGICA DE DRAG & DROP =====
-
     private void sendDragInfo(boolean dragging, double x, double y, String color) {
         if (Main.wsClient != null && Main.wsClient.isOpen()) {
             try {
@@ -326,7 +374,8 @@ public class CtrlGame implements Initializable {
     }
 
     private void handleDropOnBoard(double x, double y) {
-        if (isDragging && isMyTurn() && isPointOverBoard(x, y)) {
+        // ✅ Solo permitir drop en la zona superior del tablero
+        if (isDragging && isMyTurn() && isPointInDropZone(x, y)) {
             int column = getColumnFromX(x);
             if (isValidColumn(column)) {
                 Main.sendPlay(column);
@@ -363,73 +412,87 @@ public class CtrlGame implements Initializable {
         }
     }
 
-    // ===== ANIMACIONES =====
-
+    // ===== ANIMACIONES CON FÍSICA MÁS LENTA =====
     private void startFallingAnimation(String pieceColor, int column, int row) {
-        System.out.println("🎬 INICIANDO ANIMACIÓN para " + pieceColor + " en columna " + column + ", fila " + row);
+        System.out.println("🎬 SOLICITANDO ANIMACIÓN para " + pieceColor + " en (" + column + "," + row + ")");
         
-        // Calcular coordenadas - empezar más arriba para mejor efecto visual
-        double startY = BOARD_OFFSET_Y - CELL_SIZE * 2; // Empieza 2 celdas arriba del tablero
-        double endY = row * CELL_SIZE + BOARD_OFFSET_Y + CELL_SIZE / 2;
-        
-        System.out.println("📏 Coordenadas animación: desde Y=" + startY + " hasta Y=" + endY);
-        
-        // Verificar que no haya ya una animación para esta posición
+        // ✅ VERIFICAR MÁS ESTRICTAMENTE para evitar duplicados
         boolean alreadyAnimating = activeAnimations.stream()
-            .anyMatch(anim -> anim.targetColumn == column && anim.targetRow == row);
+            .anyMatch(anim -> anim.isActive && 
+                            anim.targetColumn == column && 
+                            anim.targetRow == row);
         
         if (!alreadyAnimating) {
-            // Crear y añadir animación
-            FallingAnimation animation = new FallingAnimation(pieceColor, column, row, startY, endY);
+            System.out.println("🚀 CREANDO NUEVA ANIMACIÓN");
+            FallingAnimation animation = new FallingAnimation(pieceColor, column, row);
             activeAnimations.add(animation);
-            
-            // Limpiar animaciones completadas después de un tiempo
-            Main.pauseDuring(2000, () -> {
-                int before = activeAnimations.size();
-                activeAnimations.removeIf(anim -> !anim.isActive);
-                int after = activeAnimations.size();
-                if (before != after) {
-                    System.out.println("🧹 Limpiadas " + (before - after) + " animaciones completadas");
-                }
-            });
         } else {
-            System.out.println("⚠️ Ya hay una animación en curso para esta posición");
+            System.out.println("⏸️  Ya hay una animación activa para esta posición, ignorando...");
         }
     }
 
     /**
-     * Detecta movimientos nuevos y inicia animaciones
+     * Detecta movimientos nuevos usando lastMove del servidor
      */
     private void detectAndAnimateMoves(GameState gameState) {
-        if (gameState.getGame() == null || gameState.getGame().getBoard() == null) {
-            System.out.println("❌ No hay datos del tablero para animar");
+        System.out.println("🎯 DETECTANDO MOVIMIENTOS PARA ANIMAR");
+        
+        if (gameState == null) {
+            System.out.println("❌ GameState es null");
             return;
         }
         
-        String[][] currentBoard = gameState.getGame().getBoard();
-        String[][] previousBoard = getPreviousBoard();
-        
-        System.out.println("🔍 Buscando movimientos para animar...");
-        int newPiecesFound = 0;
-        
-        // Buscar fichas nuevas en el tablero
-        for (int col = 0; col < COLUMNS; col++) {
-            for (int row = 0; row < ROWS; row++) {
-                String currentCell = currentBoard[row][col];
-                String previousCell = (previousBoard != null && row < previousBoard.length && col < previousBoard[row].length) 
-                                    ? previousBoard[row][col] : " ";
-                
-                // Si hay una ficha nueva en esta posición
-                if (isNewPiece(currentCell, previousCell)) {
-                    System.out.println("🆕 Ficha nueva detectada: " + currentCell + " en (" + col + "," + row + ")");
-                    startFallingAnimation(currentCell, col, row);
-                    newPiecesFound++;
-                }
-            }
+        if (gameState.getGame() == null) {
+            System.out.println("❌ GameData es null");
+            return;
         }
         
-        if (newPiecesFound > 0) {
-            System.out.println("🎯 Total de fichas nuevas para animar: " + newPiecesFound);
+        // ✅ USAR lastMove DEL SERVIDOR
+        Move lastMove = gameState.getGame().getLastMove();
+        
+        System.out.println("📊 LastMove recibido: " + (lastMove != null ? 
+            "Columna=" + lastMove.getCol() + ", Fila=" + lastMove.getRow() : "NULL"));
+        
+        if (lastMove != null) {
+            int column = lastMove.getCol();
+            int row = lastMove.getRow();
+            
+            System.out.println("📍 Posición lastMove: (" + column + ", " + row + ")");
+            
+            // Verificar que la posición es válida
+            if (column >= 0 && column < COLUMNS && row >= 0 && row < ROWS) {
+                String[][] board = gameState.getGame().getBoard();
+                if (board != null && row < board.length && column < board[row].length) {
+                    String pieceColor = board[row][column];
+                    
+                    System.out.println("🎨 Color en posición: '" + pieceColor + "'");
+                    
+                    if (pieceColor != null && !pieceColor.trim().isEmpty()) {
+                        System.out.println("🚀 INICIANDO ANIMACIÓN para " + pieceColor + " en (" + column + ", " + row + ")");
+                        startFallingAnimation(pieceColor, column, row);
+                    } else {
+                        System.out.println("⚠️ Celda vacía en lastMove position");
+                    }
+                } else {
+                    System.out.println("❌ Board inválido o posición fuera de rango");
+                }
+            } else {
+                System.out.println("❌ Posición lastMove inválida: (" + column + ", " + row + ")");
+            }
+        } else {
+            System.out.println("🔍 No hay último movimiento para animar");
+            
+            // ✅ DEBUG: Mostrar el estado completo del juego
+            System.out.println("📋 Estado del juego:");
+            System.out.println("  - Status: " + gameState.getGame().getStatus());
+            System.out.println("  - Turn: " + gameState.getGame().getTurn());
+            System.out.println("  - Winner: " + gameState.getGame().getWinner());
+            
+            // Mostrar el tablero actual
+            String[][] board = gameState.getGame().getBoard();
+            if (board != null) {
+                System.out.println("  - Board: " + Arrays.deepToString(board));
+            }
         }
     }
 
@@ -461,9 +524,11 @@ public class CtrlGame implements Initializable {
     }
 
     // ===== ACTUALIZACIÓN DE ESTADO =====
-
     public void updateGameState(GameState gameState) {
         System.out.println("🔄 ACTUALIZANDO ESTADO DEL JUEGO");
+        
+        // Limpiar animaciones completadas antes de procesar nuevo estado
+        cleanupCompletedAnimations();
         
         // Guardar el estado anterior ANTES de actualizar
         String[][] previousBoard = getPreviousBoard();
@@ -487,10 +552,14 @@ public class CtrlGame implements Initializable {
         // Renderizar
         render(gameState);
         
-        System.out.println("✅ Estado del juego actualizado");
+        System.out.println("✅ Estado del juego actualizado. Animaciones activas: " + 
+                        activeAnimations.stream().filter(anim -> anim.isActive).count());
     }
 
     public void updateOpponentDragInfo(boolean dragging, double x, double y, String color) {
+        System.out.println("🎯 ACTUALIZANDO DRAG OPONENTE: " + 
+                          dragging + " at (" + x + "," + y + ") color=" + color);
+        
         opponentIsDragging = dragging;
         opponentDragX = x;
         opponentDragY = y;
@@ -517,7 +586,6 @@ public class CtrlGame implements Initializable {
     }
 
     // ===== RENDERIZADO =====
-
     public void render(GameState gameState) {
         // Asegurarse de que estamos en el hilo de JavaFX
         if (!Platform.isFxApplicationThread()) {
@@ -526,22 +594,39 @@ public class CtrlGame implements Initializable {
         }
         
         gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
+        
+        // ✅ Dibujar zona de drop
+        drawDropZone();
+        
         drawBoard();
+        
+        // ✅ DIBUJAR FICHAS DEL TABLERO (EXCLUYENDO LAS QUE ESTÁN ANIMÁNDOSE)
         drawPieces(gameState);
+        
         drawMouseCursors();
         drawHoverEffects();
         drawDraggedPieces();
         
-        // ⭐ DIBUJAR ANIMACIONES ANTES de las fichas normales para que se vean encima
+        // ✅ DIBUJAR ANIMACIONES ACTIVAS (ENCIMA de las fichas estáticas)
         drawActiveAnimations();
         
         drawWinLine(gameState);
+    }
+
+    // ✅ Dibujar zona de drop en la parte superior
+    private void drawDropZone() {
+        // Fondo semitransparente de la zona de drop
+        gc.setFill(Color.rgb(0, 255, 0, 0.1));
+        gc.fillRect(BOARD_OFFSET_X, DROP_ZONE_Y, COLUMNS * CELL_SIZE, DROP_ZONE_HEIGHT);
         
-        // Debug: mostrar info de animaciones activas
-        if (!activeAnimations.isEmpty()) {
-            gc.setFill(Color.BLACK);
-            gc.fillText("Animaciones activas: " + activeAnimations.size(), 10, 20);
-        }
+        // Borde de la zona de drop
+        gc.setStroke(Color.rgb(0, 200, 0, 0.5));
+        gc.setLineWidth(2);
+        gc.strokeRect(BOARD_OFFSET_X, DROP_ZONE_Y, COLUMNS * CELL_SIZE, DROP_ZONE_HEIGHT);
+        
+        // Texto indicativo
+        gc.setFill(Color.GREEN);
+        gc.fillText("Zona de Soltar", BOARD_OFFSET_X + 10, DROP_ZONE_Y + 20);
     }
 
     private void drawBoard() {
@@ -563,8 +648,24 @@ public class CtrlGame implements Initializable {
         if (gameState.getGame() == null || gameState.getGame().getBoard() == null) return;
         
         String[][] board = gameState.getGame().getBoard();
+        
+        // ✅ OBTENER POSICIONES QUE ESTÁN SIENDO ANIMADAS
+        Set<String> animatingPositions = new HashSet<>();
+        for (FallingAnimation anim : activeAnimations) {
+            if (anim.isActive) {
+                String key = anim.targetColumn + "," + anim.targetRow;
+                animatingPositions.add(key);
+            }
+        }
+        
         for (int col = 0; col < COLUMNS; col++) {
             for (int row = 0; row < ROWS; row++) {
+                // ✅ NO DIBUJAR SI ESTÁ SIENDO ANIMADA
+                String positionKey = col + "," + row;
+                if (animatingPositions.contains(positionKey)) {
+                    continue; // Saltar esta posición - se dibuja en la animación
+                }
+                
                 String cell = board[row][col];
                 if (cell != null && !cell.trim().isEmpty()) {
                     drawPieceOnBoard(col, row, cell);
@@ -613,13 +714,14 @@ public class CtrlGame implements Initializable {
         gc.setStroke(Color.BLACK);
         gc.strokeOval(x - radius, y - radius, radius * 2, radius * 2);
         
-        if (isPointOverBoard(x, y)) {
+        // ✅ Solo mostrar highlight en la zona de drop
+        if (isPointInDropZone(x, y)) {
             int hoverColumn = getColumnFromX(x);
             if (isValidColumn(hoverColumn)) {
                 Color highlightColor = isLocal ? 
                     Color.rgb(0, 255, 0, 0.3) : Color.rgb(255, 0, 0, 0.2);
                 gc.setFill(highlightColor);
-                gc.fillRect(hoverColumn * CELL_SIZE + BOARD_OFFSET_X, BOARD_OFFSET_Y, CELL_SIZE, ROWS * CELL_SIZE);
+                gc.fillRect(hoverColumn * CELL_SIZE + BOARD_OFFSET_X, DROP_ZONE_Y, CELL_SIZE, DROP_ZONE_HEIGHT);
             }
         }
     }
@@ -643,13 +745,12 @@ public class CtrlGame implements Initializable {
     }
 
     private void drawHoverEffects() {
-        if (isMyTurn() && !isDragging && myMouseX >= BOARD_OFFSET_X && 
-            myMouseX <= BOARD_OFFSET_X + COLUMNS * CELL_SIZE) {
-            
+        // ✅ Solo mostrar hover effects en la zona de drop
+        if (isMyTurn() && !isDragging && isPointInDropZone(myMouseX, myMouseY)) {
             int hoverColumn = getColumnFromX(myMouseX);
             if (isValidColumn(hoverColumn)) {
                 gc.setFill(Color.rgb(0, 255, 0, 0.2));
-                gc.fillRect(hoverColumn * CELL_SIZE + BOARD_OFFSET_X, BOARD_OFFSET_Y, CELL_SIZE, ROWS * CELL_SIZE);
+                gc.fillRect(hoverColumn * CELL_SIZE + BOARD_OFFSET_X, DROP_ZONE_Y, CELL_SIZE, DROP_ZONE_HEIGHT);
             }
         }
     }
@@ -665,6 +766,19 @@ public class CtrlGame implements Initializable {
     }
 
     // ===== MÉTODOS AUXILIARES =====
+
+    // ✅ Verificar si el punto está en la zona de drop
+    private boolean isPointInDropZone(double x, double y) {
+        return x >= BOARD_OFFSET_X && 
+               x <= BOARD_OFFSET_X + COLUMNS * CELL_SIZE &&
+               y >= DROP_ZONE_Y && 
+               y <= DROP_ZONE_Y + DROP_ZONE_HEIGHT;
+    }
+
+    private boolean isPointOverBoard(double x, double y) {
+        return x >= BOARD_OFFSET_X && x <= BOARD_OFFSET_X + COLUMNS * CELL_SIZE &&
+               y >= BOARD_OFFSET_Y && y <= BOARD_OFFSET_Y + ROWS * CELL_SIZE;
+    }
 
     private void updateOpponentInfo(GameState gameState) {
         if (gameState.getClientsList() != null) {
@@ -726,11 +840,6 @@ public class CtrlGame implements Initializable {
         return gameState.getGame() != null && 
                "playing".equals(gameState.getGame().getStatus()) &&
                (availablePieces.isEmpty() || !availablePieces.get(0).color.equals(Main.myRole));
-    }
-
-    private boolean isPointOverBoard(double x, double y) {
-        return x >= BOARD_OFFSET_X && x <= BOARD_OFFSET_X + COLUMNS * CELL_SIZE &&
-               y >= BOARD_OFFSET_Y && y <= BOARD_OFFSET_Y + ROWS * CELL_SIZE;
     }
 
     private int getColumnFromX(double x) {

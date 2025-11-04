@@ -27,6 +27,8 @@ public class GameSession {
     private List<GameObject> gameObjects;
     private boolean countdownInProgress = false;
 
+    private GameState gameState;
+
     private Map<String, double[]> playerMousePositions = new ConcurrentHashMap<>();
 
     // Para tracking del drag & drop
@@ -140,6 +142,7 @@ public class GameSession {
         broadcastGameState();
     }
     
+    // EN GameSession.java - REEMPLAZAR el método makeMove completo:
     public void makeMove(WebSocket player, int column) {
         if (gameFinished || !gameStarted) return;
         
@@ -161,10 +164,20 @@ public class GameSession {
         String piece = playerName.equals(player1Name) ? "R" : "Y";
         board[row][column] = piece;
         
+        // ✅ CREAR lastMove con la posición exacta
+        Move lastMove = new Move();
+        lastMove.setCol(column);
+        lastMove.setRow(row);
+        
         // Verificar victoria
         if (checkWin(row, column, piece)) {
             gameFinished = true;
             winner = playerName;
+            // ✅ GUARDAR lastMove en gameData
+            if (gameState == null) {
+                gameState = createGameState();
+            }
+            gameState.getGame().setLastMove(lastMove);
             broadcastGameState();
             return;
         }
@@ -173,6 +186,11 @@ public class GameSession {
         if (checkDraw()) {
             gameFinished = true;
             winner = "draw";
+            // ✅ GUARDAR lastMove en gameData
+            if (gameState == null) {
+                gameState = createGameState();
+            }
+            gameState.getGame().setLastMove(lastMove);
             broadcastGameState();
             return;
         }
@@ -180,7 +198,11 @@ public class GameSession {
         // Cambiar turno
         currentTurn = currentTurn.equals(player1Name) ? player2Name : player1Name;
         
-        // Broadcast del nuevo estado
+        // ✅ GUARDAR lastMove en gameData antes del broadcast
+        if (gameState == null) {
+            gameState = createGameState();
+        }
+        gameState.getGame().setLastMove(lastMove);
         broadcastGameState();
     }
     
@@ -239,18 +261,29 @@ public class GameSession {
         GameState gameState = createGameState();
         String gameStateJson = convertGameStateToJson(gameState);
         broadcastToPlayers(gameStateJson);
-    }
-    
-    private GameState createGameState() {
-        GameState gameState = new GameState();
-        gameState.setType("serverData");
         
-        // Usar getClientsList() que ahora incluye la información de drag
+        // ✅ OPCIONAL: Resetear lastMove después de enviarlo para evitar repeticiones
+        if (gameState.getGame() != null && gameState.getGame().getLastMove() != null) {
+            System.out.println("🔄 Reseteando lastMove después del broadcast");
+            gameState.getGame().setLastMove(null);
+        }
+    }
+
+    private GameState createGameState() {
+        if (gameState == null) {
+            gameState = new GameState();
+        }
+        
+        gameState.setType("serverData");
         gameState.setClientsList(getClientsList());
         gameState.setObjectsList(gameObjects);
         
-        // Crear datos del juego
-        GameData gameData = new GameData();
+        // ✅ CREAR GameData si no existe
+        if (gameState.getGame() == null) {
+            gameState.setGame(new GameData());
+        }
+        
+        GameData gameData = gameState.getGame();
         
         if (gameFinished) {
             if (winner.equals("draw")) {
@@ -270,7 +303,7 @@ public class GameSession {
         gameData.setTurn(currentTurn);
         gameData.setWinner(winner);
         
-        gameState.setGame(gameData);
+        // ✅ lastMove se setea en makeMove, no aquí
         
         return gameState;
     }
@@ -311,6 +344,7 @@ public class GameSession {
         return clients;
     }
     
+    // EN GameSession.java - MODIFICAR convertGameStateToJson para incluir lastMove:
     private String convertGameStateToJson(GameState gameState) {
         try {
             JSONObject json = new JSONObject();
@@ -349,6 +383,17 @@ public class GameSession {
                 gameJson.put("status", gameData.getStatus());
                 gameJson.put("turn", gameData.getTurn());
                 gameJson.put("winner", gameData.getWinner());
+                
+                // ✅ AÑADIR lastMove AL JSON
+                if (gameData.getLastMove() != null) {
+                    JSONObject lastMoveJson = new JSONObject();
+                    lastMoveJson.put("col", gameData.getLastMove().getCol());
+                    lastMoveJson.put("row", gameData.getLastMove().getRow());
+                    gameJson.put("lastMove", lastMoveJson);
+                    System.out.println("📤 Enviando lastMove en JSON: col=" + gameData.getLastMove().getCol() + ", row=" + gameData.getLastMove().getRow());
+                } else {
+                    System.out.println("📤 No hay lastMove para enviar en JSON");
+                }
                 
                 // Board
                 JSONArray boardArray = new JSONArray();

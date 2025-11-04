@@ -173,6 +173,7 @@ public class Main extends Application {
         });
     }
     
+    // EN Main.java - MODIFICAR parseGameState para parsear lastMove:
     private static GameState parseGameState(JSONObject json) {
         GameState gameState = new GameState();
         
@@ -217,6 +218,18 @@ public class Main extends Application {
             if (gameJson.has("turn")) gameData.setTurn(gameJson.getString("turn"));
             if (gameJson.has("winner")) gameData.setWinner(gameJson.getString("winner"));
             
+            // ✅ PARSEAR lastMove
+            if (gameJson.has("lastMove")) {
+                JSONObject moveJson = gameJson.getJSONObject("lastMove");
+                Move move = new Move();
+                if (moveJson.has("col")) move.setCol(moveJson.getInt("col"));
+                if (moveJson.has("row")) move.setRow(moveJson.getInt("row"));
+                gameData.setLastMove(move);
+                System.out.println("📥 LastMove parseado: col=" + move.getCol() + ", row=" + move.getRow());
+            } else {
+                System.out.println("📥 No hay lastMove en el JSON recibido");
+            }
+            
             // Parse board
             if (gameJson.has("board")) {
                 JSONArray boardArray = gameJson.getJSONArray("board");
@@ -229,15 +242,6 @@ public class Main extends Application {
                     }
                 }
                 gameData.setBoard(board);
-            }
-            
-            // Parse lastMove
-            if (gameJson.has("lastMove")) {
-                JSONObject moveJson = gameJson.getJSONObject("lastMove");
-                Move move = new Move();
-                if (moveJson.has("col")) move.setCol(moveJson.getInt("col"));
-                if (moveJson.has("row")) move.setRow(moveJson.getInt("row"));
-                gameData.setLastMove(move);
             }
             
             gameState.setGame(gameData);
