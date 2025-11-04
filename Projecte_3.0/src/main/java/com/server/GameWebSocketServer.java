@@ -391,6 +391,7 @@ public class GameWebSocketServer extends WebSocketServer {
             if (sessionId != null) {
                 GameSession session = gameSessions.get(sessionId);
                 if (session != null) {
+                    // ✅ CORRECCIÓN: Llamar al método que hace broadcast automático
                     session.updatePlayerDragInfo(playerName, isDragging, x, y, pieceColor);
                 }
             }

@@ -491,12 +491,17 @@ public class CtrlGame implements Initializable {
     }
 
     public void updateOpponentDragInfo(boolean dragging, double x, double y, String color) {
+        System.out.println("🎯 ACTUALIZANDO DRAG OPONENTE: " + 
+                        dragging + " at (" + x + "," + y + ") color=" + color);
+        
         opponentIsDragging = dragging;
         opponentDragX = x;
         opponentDragY = y;
         opponentDragColor = color;
         
-        if (Main.currentGameState != null) render(Main.currentGameState);
+        if (Main.currentGameState != null) {
+            render(Main.currentGameState);
+        }
     }
 
     public void resetGameState() {
@@ -592,6 +597,7 @@ public class CtrlGame implements Initializable {
             drawDraggedPiece(myMouseX, myMouseY, draggedPieceColor, true);
         }
         if (opponentIsDragging && !isMyTurn()) {
+            System.out.println("🎨 DIBUJANDO DRAG OPONENTE: " + opponentDragColor + " at (" + opponentDragX + "," + opponentDragY + ")");
             drawDraggedPiece(opponentDragX, opponentDragY, opponentDragColor, false);
         }
     }
