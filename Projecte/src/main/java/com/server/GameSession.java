@@ -11,6 +11,7 @@ import com.shared.ClientInfo;
 import com.shared.GameObject;
 import com.shared.GameData;
 import com.shared.Move;
+import com.shared.DragInfo;
 
 public class GameSession {
     private String sessionId;
@@ -27,6 +28,9 @@ public class GameSession {
     private boolean countdownInProgress = false;
 
     private Map<String, double[]> playerMousePositions = new ConcurrentHashMap<>();
+
+    // Para tracking del drag & drop
+    private Map<String, DragInfo> playerDragInfo = new ConcurrentHashMap<>();
     
     // Constantes del juego
     private static final int ROWS = 6;
@@ -40,8 +44,7 @@ public class GameSession {
         initializeBoard();
         initializeGameObjects();
         
-        // Inicializar posición del mouse del jugador 1
-        playerMousePositions.put(player1Name, new double[]{0, 0});
+        System.out.println("🎮 Nueva sesión: " + player1Name + " será ROJO (R)");
     }
     
     private void initializeBoard() {
@@ -79,12 +82,10 @@ public class GameSession {
         this.gameStarted = true;
         this.countdownInProgress = true;
         
-        // Inicializar posición del mouse del jugador 2
-        playerMousePositions.put(player2Name, new double[]{0, 0});
+        System.out.println("🎮 Jugador 2 unido: " + player2Name + " será AMARILLO (Y)");
+        System.out.println("🎯 Partida: " + player1Name + " (R) vs " + player2Name + " (Y)");
         
-        System.out.println("Partida iniciada: " + player1Name + " (R) vs " + player2Name + " (Y)");
-        
-        // Enviar estado INMEDIATAMENTE con status: "countdown"
+        // Enviar estado INMEDIATAMENTE con roles asignados
         broadcastGameState();
         
         // Luego iniciar countdown
@@ -98,6 +99,8 @@ public class GameSession {
             System.out.println("Mouse actualizado - " + playerName + ": (" + x + ", " + y + ")");
             // Enviar update a ambos jugadores
             broadcastGameState();
+        } else {
+            System.out.println("x Jugador no encontrado en sesión: " + playerName);
         }
     }
     
@@ -107,20 +110,24 @@ public class GameSession {
     }
     
     private void sendCountdown() {
+        System.out.println("📤 [Sesión " + sessionId + "] Enviando countdown a jugadores");
+        
         JSONObject countdownMsg = new JSONObject();
         countdownMsg.put("type", "countdown");
         countdownMsg.put("count", 3);
         
         broadcastToPlayers(countdownMsg.toString());
+        System.out.println("✅ [Sesión " + sessionId + "] Countdown enviado");
         
         // Programar inicio del juego después del countdown
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
+                System.out.println("⏰ [Sesión " + sessionId + "] Timer terminado - iniciando juego");
                 startGame();
             }
-        }, 4000);
+        }, 4000); // 4 segundos total
     }
     
     private void startGame() {
@@ -238,38 +245,8 @@ public class GameSession {
         GameState gameState = new GameState();
         gameState.setType("serverData");
         
-        // Crear lista de clientes
-        List<ClientInfo> clients = new ArrayList<>();
-        
-        // Jugador 1 (Rojo)
-        ClientInfo client1 = new ClientInfo();
-        client1.setName(player1Name);
-        client1.setColor("RED");
-        client1.setRole("R");
-        
-        // Obtener posición del mouse del jugador 1
-        double[] pos1 = playerMousePositions.get(player1Name);
-        client1.setMouseX(pos1 != null ? pos1[0] : 0);
-        client1.setMouseY(pos1 != null ? pos1[1] : 0);
-        
-        clients.add(client1);
-        
-        // Jugador 2 (Amarillo)
-        if (player2 != null) {
-            ClientInfo client2 = new ClientInfo();
-            client2.setName(player2Name);
-            client2.setColor("YELLOW");
-            client2.setRole("Y");
-            
-            // Obtener posición del mouse del jugador 2
-            double[] pos2 = playerMousePositions.get(player2Name);
-            client2.setMouseX(pos2 != null ? pos2[0] : 0);
-            client2.setMouseY(pos2 != null ? pos2[1] : 0);
-            
-            clients.add(client2);
-        }
-        
-        gameState.setClientsList(clients);
+        // Usar getClientsList() que ahora incluye la información de drag
+        gameState.setClientsList(getClientsList());
         gameState.setObjectsList(gameObjects);
         
         // Crear datos del juego
@@ -296,6 +273,42 @@ public class GameSession {
         gameState.setGame(gameData);
         
         return gameState;
+    }
+
+    private List<ClientInfo> getClientsList() {
+        List<ClientInfo> clients = new ArrayList<>();
+        
+        // Jugador 1
+        ClientInfo client1 = new ClientInfo();
+        client1.setName(player1Name);
+        client1.setColor("RED");
+        client1.setRole("R");
+        
+        // Asignar información de drag del jugador 1
+        DragInfo dragInfo1 = playerDragInfo.get(player1Name);
+        if (dragInfo1 != null) {
+            client1.setDragInfo(dragInfo1);
+        }
+        
+        clients.add(client1);
+        
+        // Jugador 2
+        if (player2 != null) {
+            ClientInfo client2 = new ClientInfo();
+            client2.setName(player2Name);
+            client2.setColor("YELLOW");
+            client2.setRole("Y");
+            
+            // Asignar información de drag del jugador 2
+            DragInfo dragInfo2 = playerDragInfo.get(player2Name);
+            if (dragInfo2 != null) {
+                client2.setDragInfo(dragInfo2);
+            }
+            
+            clients.add(client2);
+        }
+        
+        return clients;
     }
     
     private String convertGameStateToJson(GameState gameState) {
@@ -359,6 +372,36 @@ public class GameSession {
             System.err.println("Error converting GameState to JSON: " + e.getMessage());
             return "{\"type\":\"serverData\",\"clientsList\":[],\"game\":{\"status\":\"waiting\"}}";
         }
+    }
+
+    public void updatePlayerDragInfo(String playerName, boolean isDragging, double x, double y, String pieceColor) {
+        DragInfo dragInfo = playerDragInfo.get(playerName);
+        if (dragInfo == null) {
+            dragInfo = new DragInfo();
+            playerDragInfo.put(playerName, dragInfo);
+        }
+        
+        dragInfo.setDragging(isDragging);
+        dragInfo.setDragX(x);
+        dragInfo.setDragY(y);
+        dragInfo.setPieceColor(pieceColor);
+        
+        System.out.println("🔄 Drag actualizado: " + playerName + " - " + isDragging + " at (" + x + "," + y + ")");
+        
+        // BROADCAST INMEDIATO en lugar de esperar al gameState completo
+        broadcastDragUpdate(playerName, isDragging, x, y, pieceColor);
+    }
+
+    private void broadcastDragUpdate(String playerName, boolean isDragging, double x, double y, String color) {
+        JSONObject dragMsg = new JSONObject();
+        dragMsg.put("type", "dragUpdate");
+        dragMsg.put("player", playerName);
+        dragMsg.put("dragging", isDragging);
+        dragMsg.put("x", x);
+        dragMsg.put("y", y);
+        dragMsg.put("color", color);
+        
+        broadcastToPlayers(dragMsg.toString());
     }
     
     public void broadcastToPlayers(String message) {

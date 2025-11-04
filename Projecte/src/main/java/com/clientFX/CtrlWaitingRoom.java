@@ -1,38 +1,36 @@
 package com.clientFX;
 
 import javafx.fxml.FXML;
+import javafx.fxml.Initializable;
 import javafx.scene.control.Label;
-import org.json.JSONObject;
+import javafx.scene.control.ProgressIndicator;
+import java.net.URL;
+import java.util.ResourceBundle;
 
-public class CtrlWaitingRoom {
+public class CtrlWaitingRoom implements Initializable {
 
-    @FXML private Label lblStatus;
+    @FXML
+    private Label lblStatus;
+    
+    @FXML
+    private ProgressIndicator progressIndicator;
 
-    public void initialize() {
-        if (lblStatus != null) lblStatus.setText("En espera...");
+    @Override
+    public void initialize(URL url, ResourceBundle rb) {
+        lblStatus.setText("Conectando...");
+        progressIndicator.setVisible(true);
     }
-
-    public void handleMessage(JSONObject msg) {
-        String type = msg.optString("type", "");
-        if ("invitation".equals(type) || "invite".equals(type)) {
-            String invitationType = msg.optString("invitationType", msg.optString("invitationType", ""));
-            if ("received".equals(invitationType)) {
-                String from = msg.optString("from", msg.optString("origin", "??"));
-                lblStatus.setText("Invitación recibida de: " + from);
-            } else if ("accepted".equals(invitationType)) {
-                lblStatus.setText("Invitación aceptada. Preparando partida...");
-            } else if ("rejected".equals(invitationType)) {
-                lblStatus.setText("Invitación rechazada.");
-            } else {
-                // mensajes genéricos de inicio
-                lblStatus.setText("Esperando...");
-            }
-        } else if ("gameStarted".equals(type)) {
-            lblStatus.setText("Partida iniciada!");
-        } else if (msg.has("game") && msg.getJSONObject("game").optString("status", "").equalsIgnoreCase("playing")) {
-            lblStatus.setText("Partida en curso");
-        } else if ("opponentDisconnected".equals(type)) {
-            lblStatus.setText("Oponente desconectado: " + msg.optString("name", ""));
+    
+    public void updateStatus(String status) {
+        lblStatus.setText(status);
+    }
+    
+    public void setMatching(boolean matching) {
+        if (matching) {
+            lblStatus.setText("Emparellant...");
+            progressIndicator.setVisible(true);
+        } else {
+            progressIndicator.setVisible(false);
         }
     }
 }

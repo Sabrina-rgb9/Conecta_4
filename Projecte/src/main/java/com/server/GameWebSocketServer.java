@@ -8,6 +8,7 @@ import org.json.JSONArray;
 import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+
 import com.shared.GameState;
 import com.shared.ClientInfo;
 import com.shared.GameObject;
@@ -19,10 +20,12 @@ public class GameWebSocketServer extends WebSocketServer {
     private Map<WebSocket, String> connectedClients = new ConcurrentHashMap<>();
     private Map<String, GameSession> gameSessions = new ConcurrentHashMap<>();
     private Map<WebSocket, String> clientToSession = new ConcurrentHashMap<>();
+
+    private static final int UPDATE_INTERVAL = 1000;
     
     public GameWebSocketServer(int port) {
         super(new InetSocketAddress(port));
-        startPeriodicUpdates(); // Añadir esta línea
+        startPeriodicUpdates(); 
     }
     
     public void startPeriodicUpdates() {
@@ -35,7 +38,7 @@ public class GameWebSocketServer extends WebSocketServer {
                     sendCorrectGameStateToClient(conn);
                 }
             }
-        }, 0, 2000); // Actualizar cada 2 segundos
+        }, 0, UPDATE_INTERVAL); 
     }
     
     @Override
@@ -94,6 +97,9 @@ public class GameWebSocketServer extends WebSocketServer {
                     break;
                 case "clientExit":  // NUEVO: Salir
                     handleClientExit(conn, jsonMessage);
+                    break;
+                case "clientDragPiece":
+                    handleClientDragPiece(conn, jsonMessage);
                     break;
                 default:
                     System.out.println("Tipo de mensaje desconocido: " + type);
@@ -354,16 +360,42 @@ public class GameWebSocketServer extends WebSocketServer {
         
         String playerName = connectedClients.get(conn);
         String sessionId = clientToSession.get(conn);
+
+        System.out.println("Mouse move from " + playerName + ": (" + x + ", " + y + ")");
         
         if (sessionId != null) {
             // Actualizar posición del mouse en la sesión de juego
             GameSession session = gameSessions.get(sessionId);
             if (session != null) {
                 session.updatePlayerMousePosition(playerName, x, y);
+                session.broadcastGameState();
             }
         } else {
             // Actualizar posición del mouse global (fuera de partida)
             updatePlayerMousePosition(playerName, x, y);
+        }
+    }
+
+    private void handleClientDragPiece(WebSocket conn, JSONObject message) {
+        try {
+            boolean isDragging = message.getBoolean("isDragging");
+            double x = message.getDouble("x");
+            double y = message.getDouble("y");
+            String pieceColor = message.getString("pieceColor");
+            
+            String playerName = connectedClients.get(conn);
+            String sessionId = clientToSession.get(conn);
+            
+            System.out.println("Drag from " + playerName + ": " + isDragging + " at (" + x + "," + y + ") color=" + pieceColor);
+            
+            if (sessionId != null) {
+                GameSession session = gameSessions.get(sessionId);
+                if (session != null) {
+                    session.updatePlayerDragInfo(playerName, isDragging, x, y, pieceColor);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error handling drag piece: " + e.getMessage());
         }
     }
 
@@ -373,6 +405,26 @@ public class GameWebSocketServer extends WebSocketServer {
             GameSession session = entry.getValue();
             if (session.hasPlayerWithName(playerName)) {
                 session.updatePlayerMousePosition(playerName, x, y);
+            }
+        }
+    }
+
+    public void broadcastDragUpdate(String playerName, boolean isDragging, double x, double y, String color) {
+        for (Map.Entry<String, GameSession> entry : gameSessions.entrySet()) {
+            GameSession session = entry.getValue();
+            if (session.hasPlayerWithName(playerName)) {
+                session.updatePlayerDragInfo(playerName, isDragging, x, y, color);
+                
+                // Broadcast inmediato solo del estado de drag
+                JSONObject dragUpdate = new JSONObject();
+                dragUpdate.put("type", "dragUpdate");
+                dragUpdate.put("player", playerName);
+                dragUpdate.put("dragging", isDragging);
+                dragUpdate.put("x", x);
+                dragUpdate.put("y", y);
+                dragUpdate.put("color", color);
+                
+                session.broadcastToPlayers(dragUpdate.toString());
             }
         }
     }
