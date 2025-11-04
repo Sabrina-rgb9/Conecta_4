@@ -4,59 +4,128 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.effect.DropShadow?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.paint.Color?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane fx:id="anchor" minHeight="500.0" minWidth="600.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.clientFX.CtrlConfig">
+<AnchorPane fx:id="anchor" minHeight="500.0" minWidth="600.0" 
+            xmlns="http://javafx.com/javafx/19" 
+            xmlns:fx="http://javafx.com/fxml/1" 
+            fx:controller="com.clientFX.CtrlConfig"
+            style="-fx-background-color: linear-gradient(to bottom, #f2d16b, #d3a243);">
    <children>
-      <VBox alignment="CENTER" spacing="10" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+      <VBox alignment="CENTER" spacing="20" 
+            AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" 
+            AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
          <children>
-            <Label text="Server setup" alignment="CENTER">
+            <Label text="Connecta 4" alignment="CENTER" textFill="#1e1e2f">
                <font>
-                  <Font size="36.0"/>
+                  <Font name="Segoe UI Black" size="40.0"/>
                </font>
+               <effect>
+                  <DropShadow color="#00000040" radius="6.0"/>
+               </effect>
                <VBox.margin>
-                  <Insets top="16.0"/>
+                  <Insets top="30.0" bottom="20.0"/>
                </VBox.margin>
             </Label>
 
-            <!-- Campo Nombre del jugador -->
-            <HBox alignment="CENTER" spacing="10">
-                <Label text="Jugador:"/>
-                <TextField fx:id="txtPlayerName" promptText="Nom del jugador" prefWidth="200"/>
-            </HBox>
+            <!-- Panel de configuración -->
+            <VBox alignment="CENTER" spacing="15" 
+                  style="-fx-background-color: rgba(255,255,255,0.35); -fx-background-radius: 20; -fx-padding: 25;">
+               <effect>
+                  <DropShadow color="#00000030" radius="8.0"/>
+               </effect>
+               
+               <Label text="Configuració del servidor" textFill="#1e1e2f" 
+                      style="-fx-font-weight: bold; -fx-font-size: 20px;">
+                  <effect>
+                     <DropShadow color="#00000020" radius="3.0"/>
+                  </effect>
+               </Label>
 
-            <!-- Campo Protocolo -->
-            <HBox alignment="CENTER" spacing="10">
-                <Label text="Protocol:"/>
-                <TextField fx:id="txtProtocol" promptText="ws o wss" prefWidth="200"/>
-            </HBox>
+               <!-- Campo Nombre del jugador -->
+               <HBox alignment="CENTER" spacing="15">
+                  <Label text="Jugador:" textFill="#1e1e2f" 
+                         style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+                  <TextField fx:id="txtPlayerName" promptText="Nom del jugador" 
+                             prefWidth="220" prefHeight="35"
+                             style="-fx-background-radius: 10; -fx-border-radius: 10; -fx-font-size: 14px;"/>
+               </HBox>
 
-            <!-- Campo Host -->
-            <HBox alignment="CENTER" spacing="10">
-                <Label text="Server IP:"/>
-                <TextField fx:id="txtHost" promptText="localhost o IP" prefWidth="200"/>
-            </HBox>
+               <!-- Campo Protocolo -->
+               <HBox alignment="CENTER" spacing="15">
+                  <Label text="Protocol:" textFill="#1e1e2f" 
+                         style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+                  <TextField fx:id="txtProtocol" promptText="ws o wss" 
+                             prefWidth="220" prefHeight="35"
+                             style="-fx-background-radius: 10; -fx-border-radius: 10; -fx-font-size: 14px;"/>
+               </HBox>
 
-            <!-- Campo Port -->
-            <HBox alignment="CENTER" spacing="10">
-                <Label text="Port:"/>
-                <TextField fx:id="txtPort" promptText="3000" prefWidth="200"/>
-            </HBox>
+               <!-- Campo Host -->
+               <HBox alignment="CENTER" spacing="15">
+                  <Label text="Server IP:" textFill="#1e1e2f" 
+                         style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+                  <TextField fx:id="txtHost" promptText="localhost o IP" 
+                             prefWidth="220" prefHeight="35"
+                             style="-fx-background-radius: 10; -fx-border-radius: 10; -fx-font-size: 14px;"/>
+               </HBox>
 
-            <!-- Botón Conectar -->
-            <Button text="Connect" fx:id="btnConnect" onAction="#connectToServer" prefWidth="150"/>
+               <!-- Campo Port -->
+               <HBox alignment="CENTER" spacing="15">
+                  <Label text="Port:" textFill="#1e1e2f" 
+                         style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+                  <TextField fx:id="txtPort" promptText="3000" 
+                             prefWidth="220" prefHeight="35"
+                             style="-fx-background-radius: 10; -fx-border-radius: 10; -fx-font-size: 14px;"/>
+               </HBox>
 
-            <!-- Label para mensajes -->
-            <Label fx:id="txtMessage" textFill="RED"/>
+               <!-- Botón Conectar -->
+               <Button text="Connectar" fx:id="btnConnect" onAction="#connectToServer" 
+                       prefWidth="180" prefHeight="40"
+                       style="-fx-background-color: #2c3e50; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 16px; -fx-background-radius: 20; -fx-border-radius: 20;">
+                  <effect>
+                     <DropShadow color="#00000040" radius="4.0"/>
+                  </effect>
+               </Button>
+
+               <!-- Label para mensajes -->
+               <Label fx:id="txtMessage" textFill="#e74c3c" 
+                      style="-fx-font-weight: bold; -fx-font-size: 13px;"/>
+            </VBox>
 
             <!-- Botones Local / Proxmox -->
-            <HBox alignment="CENTER" spacing="20">
-                <Button text="Local" onAction="#setConfigLocal" prefWidth="100"/>
-                <Button text="Proxmox" onAction="#setConfigProxmox" prefWidth="100"/>
+            <HBox alignment="CENTER" spacing="25">
+               <Button text="Local" onAction="#setConfigLocal" 
+                       prefWidth="120" prefHeight="35"
+                       style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 15; -fx-border-radius: 15;">
+                  <effect>
+                     <DropShadow color="#00000030" radius="3.0"/>
+                  </effect>
+               </Button>
+               <Button text="Proxmox" onAction="#setConfigProxmox" 
+                       prefWidth="120" prefHeight="35"
+                       style="-fx-background-color: #e67e22; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 15; -fx-border-radius: 15;">
+                  <effect>
+                     <DropShadow color="#00000030" radius="3.0"/>
+                  </effect>
+               </Button>
             </HBox>
+
+            <!-- Texto inferior -->
+            <Label text="Configura la connexió per començar a jugar" 
+                   textFill="#1e1e2f" 
+                   style="-fx-font-style: italic; -fx-font-size: 13px;">
+               <VBox.margin>
+                  <Insets top="20.0" bottom="30.0"/>
+               </VBox.margin>
+               <effect>
+                  <DropShadow color="#00000020" radius="2.0"/>
+               </effect>
+            </Label>
          </children>
       </VBox>
    </children>
