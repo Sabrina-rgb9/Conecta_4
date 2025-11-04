@@ -128,7 +128,7 @@ public class Main extends Application {
                     case "invitation":
                         handleInvitation(jsonMessage);
                         break;
-                    case "dragUpdate":
+                    case "dragUpdate": // ✅ AÑADIR ESTE CASE
                         handleDragUpdate(jsonMessage);
                         break;
                     case "error":
@@ -159,8 +159,6 @@ public class Main extends Application {
         double x = dragMsg.getDouble("x");
         double y = dragMsg.getDouble("y");
         String color = dragMsg.getString("color");
-        
-        System.out.println("🔄 Drag update recibido: " + player + " dragging=" + dragging);
         
         // Actualizar inmediatamente sin esperar al serverData completo
         Platform.runLater(() -> {

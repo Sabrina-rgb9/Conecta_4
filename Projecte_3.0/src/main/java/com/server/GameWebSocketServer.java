@@ -32,7 +32,7 @@ public class GameWebSocketServer extends WebSocketServer {
         Timer timer = new Timer();
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
-    public void run() {
+            public void run() {
                 // CORRECCIÓN: Usar el método que respeta las sesiones de juego
                 for (WebSocket conn : connectedClients.keySet()) {
                     sendCorrectGameStateToClient(conn);
@@ -92,10 +92,10 @@ public class GameWebSocketServer extends WebSocketServer {
                 case "clientMouseMoving":
                     handleClientMouseMoving(conn, jsonMessage);
                     break;
-                case "clientBackToLobby":
+                case "clientBackToLobby":  // NUEVO: Volver al lobby
                     handleClientBackToLobby(conn, jsonMessage);
                     break;
-                case "clientExit":
+                case "clientExit":  // NUEVO: Salir
                     handleClientExit(conn, jsonMessage);
                     break;
                 case "clientDragPiece":
@@ -406,6 +406,26 @@ public class GameWebSocketServer extends WebSocketServer {
             GameSession session = entry.getValue();
             if (session.hasPlayerWithName(playerName)) {
                 session.updatePlayerMousePosition(playerName, x, y);
+            }
+        }
+    }
+
+    public void broadcastDragUpdate(String playerName, boolean isDragging, double x, double y, String color) {
+        for (Map.Entry<String, GameSession> entry : gameSessions.entrySet()) {
+            GameSession session = entry.getValue();
+            if (session.hasPlayerWithName(playerName)) {
+                session.updatePlayerDragInfo(playerName, isDragging, x, y, color);
+                
+                // Broadcast inmediato solo del estado de drag
+                JSONObject dragUpdate = new JSONObject();
+                dragUpdate.put("type", "dragUpdate");
+                dragUpdate.put("player", playerName);
+                dragUpdate.put("dragging", isDragging);
+                dragUpdate.put("x", x);
+                dragUpdate.put("y", y);
+                dragUpdate.put("color", color);
+                
+                session.broadcastToPlayers(dragUpdate.toString());
             }
         }
     }

@@ -44,9 +44,6 @@ public class GameSession {
         initializeBoard();
         initializeGameObjects();
         
-        // Inicializar posiciones de mouse
-        playerMousePositions.put(player1Name, new double[]{0, 0});
-        
         System.out.println("🎮 Nueva sesión: " + player1Name + " será ROJO (R)");
     }
     
@@ -84,9 +81,6 @@ public class GameSession {
         this.player2Name = player2Name;
         this.gameStarted = true;
         this.countdownInProgress = true;
-        
-        // Inicializar posición de mouse del jugador 2
-        playerMousePositions.put(player2Name, new double[]{0, 0});
         
         System.out.println("🎮 Jugador 2 unido: " + player2Name + " será AMARILLO (Y)");
         System.out.println("🎯 Partida: " + player1Name + " (R) vs " + player2Name + " (Y)");
@@ -290,13 +284,6 @@ public class GameSession {
         client1.setColor("RED");
         client1.setRole("R");
         
-        // Obtener posición del mouse del jugador 1
-        double[] mousePos1 = playerMousePositions.get(player1Name);
-        if (mousePos1 != null) {
-            client1.setMouseX(mousePos1[0]);
-            client1.setMouseY(mousePos1[1]);
-        }
-        
         // Asignar información de drag del jugador 1
         DragInfo dragInfo1 = playerDragInfo.get(player1Name);
         if (dragInfo1 != null) {
@@ -311,13 +298,6 @@ public class GameSession {
             client2.setName(player2Name);
             client2.setColor("YELLOW");
             client2.setRole("Y");
-            
-            // Obtener posición del mouse del jugador 2
-            double[] mousePos2 = playerMousePositions.get(player2Name);
-            if (mousePos2 != null) {
-                client2.setMouseX(mousePos2[0]);
-                client2.setMouseY(mousePos2[1]);
-            }
             
             // Asignar información de drag del jugador 2
             DragInfo dragInfo2 = playerDragInfo.get(player2Name);

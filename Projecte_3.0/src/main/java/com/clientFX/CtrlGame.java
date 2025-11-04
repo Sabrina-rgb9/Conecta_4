@@ -12,7 +12,7 @@ import javafx.scene.layout.Pane;
 import javafx.scene.shape.Circle;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
-import javafx.application.Platform;
+import javafx.application.Platform; // ⭐ IMPORTANTE: Añadir este import
 import javafx.util.Duration;
 
 import org.json.JSONObject;
@@ -491,9 +491,6 @@ public class CtrlGame implements Initializable {
     }
 
     public void updateOpponentDragInfo(boolean dragging, double x, double y, String color) {
-        System.out.println("🎯 ACTUALIZANDO DRAG OPONENTE: " + 
-                          dragging + " at (" + x + "," + y + ") color=" + color);
-        
         opponentIsDragging = dragging;
         opponentDragX = x;
         opponentDragY = y;
@@ -595,7 +592,6 @@ public class CtrlGame implements Initializable {
             drawDraggedPiece(myMouseX, myMouseY, draggedPieceColor, true);
         }
         if (opponentIsDragging && !isMyTurn()) {
-            System.out.println("🎨 DIBUJANDO DRAG OPONENTE: " + opponentDragColor + " at (" + opponentDragX + "," + opponentDragY + ")");
             drawDraggedPiece(opponentDragX, opponentDragY, opponentDragColor, false);
         }
     }
