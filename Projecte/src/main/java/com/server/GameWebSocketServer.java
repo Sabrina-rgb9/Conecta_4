@@ -364,14 +364,13 @@ public class GameWebSocketServer extends WebSocketServer {
         System.out.println("Mouse move from " + playerName + ": (" + x + ", " + y + ")");
         
         if (sessionId != null) {
-            // Actualizar posición del mouse en la sesión de juego
             GameSession session = gameSessions.get(sessionId);
             if (session != null) {
                 session.updatePlayerMousePosition(playerName, x, y);
-                session.broadcastGameState();
+                // ⭐ CORRECCIÓN: Enviar broadcast inmediato
+                session.broadcastMouseUpdate(playerName, x, y);
             }
         } else {
-            // Actualizar posición del mouse global (fuera de partida)
             updatePlayerMousePosition(playerName, x, y);
         }
     }

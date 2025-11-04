@@ -547,13 +547,30 @@ public class CtrlGame implements Initializable {
         });
     }
 
+    /**
+     * Actualiza la posición del puntero del oponente
+     */
+    public void updateOpponentMousePosition(double x, double y) {
+        opponentMouseX = x;
+        opponentMouseY = y;
+        
+        // Redibujar si tenemos un estado del juego
+        if (Main.currentGameState != null) {
+            Platform.runLater(() -> render(Main.currentGameState));
+        }
+    }
+    /**
+     * Maneja mensajes de drag del oponente
+     */
     public void updateOpponentDragInfo(boolean dragging, double x, double y, String color) {
         opponentIsDragging = dragging;
         opponentDragX = x;
         opponentDragY = y;
         opponentDragColor = color;
         
-        if (Main.currentGameState != null) render(Main.currentGameState);
+        if (Main.currentGameState != null) {
+            Platform.runLater(() -> render(Main.currentGameState));
+        }
     }
 
     public void resetGameState() {
@@ -696,12 +713,65 @@ public class CtrlGame implements Initializable {
     }
 
     private void drawMouseCursors() {
+        // Tu cursor (verde brillante)
         drawCursor(myMouseX, myMouseY, Color.LIMEGREEN, "Tú");
         
-        if (opponentMouseX > 0 && opponentMouseY > 0 && 
-            opponentMouseX < canvas.getWidth() && opponentMouseY < canvas.getHeight()) {
-            drawCursor(opponentMouseX, opponentMouseY, Color.RED, opponentName);
+        // Cursor del oponente (rojo/naranja) - más visible
+        if (opponentMouseX > 0 && opponentMouseY > 0) {
+            // Si está dentro del canvas, dibujar normal
+            if (opponentMouseX < canvas.getWidth() && opponentMouseY < canvas.getHeight()) {
+                drawCursor(opponentMouseX, opponentMouseY, Color.ORANGERED, 
+                        opponentName.isEmpty() ? "Oponente" : opponentName);
+            } else {
+                // Si está fuera, dibujar indicador en el borde
+                drawOffScreenIndicator(opponentMouseX, opponentMouseY);
+            }
         }
+    }
+
+    
+    private void drawOffScreenIndicator(double x, double y) {
+        double canvasWidth = canvas.getWidth();
+        double canvasHeight = canvas.getHeight();
+        
+        // Calcular punto en el borde más cercano
+        double edgeX = Math.max(15, Math.min(canvasWidth - 15, x));
+        double edgeY = Math.max(15, Math.min(canvasHeight - 15, y));
+        
+        // Dibujar indicador de borde
+        gc.setFill(Color.ORANGERED);
+        gc.fillOval(edgeX - 6, edgeY - 6, 12, 12);
+        gc.setStroke(Color.WHITE);
+        gc.setLineWidth(2);
+        gc.strokeOval(edgeX - 6, edgeY - 6, 12, 12);
+        
+        // Dibujar flecha direccional
+        gc.setStroke(Color.ORANGERED);
+        gc.setLineWidth(3);
+        
+        if (x < 0) {
+            gc.strokeLine(edgeX, edgeY, 5, edgeY);
+            gc.strokeLine(5, edgeY, 10, edgeY - 5);
+            gc.strokeLine(5, edgeY, 10, edgeY + 5);
+        } else if (x > canvasWidth) {
+            gc.strokeLine(edgeX, edgeY, canvasWidth - 5, edgeY);
+            gc.strokeLine(canvasWidth - 5, edgeY, canvasWidth - 10, edgeY - 5);
+            gc.strokeLine(canvasWidth - 5, edgeY, canvasWidth - 10, edgeY + 5);
+        }
+        
+        if (y < 0) {
+            gc.strokeLine(edgeX, edgeY, edgeX, 5);
+            gc.strokeLine(edgeX, 5, edgeX - 5, 10);
+            gc.strokeLine(edgeX, 5, edgeX + 5, 10);
+        } else if (y > canvasHeight) {
+            gc.strokeLine(edgeX, edgeY, edgeX, canvasHeight - 5);
+            gc.strokeLine(edgeX, canvasHeight - 5, edgeX - 5, canvasHeight - 10);
+            gc.strokeLine(edgeX, canvasHeight - 5, edgeX + 5, canvasHeight - 10);
+        }
+        
+        // Etiqueta
+        gc.setFill(Color.ORANGERED);
+        gc.fillText(opponentName.isEmpty() ? "Oponente" : opponentName, edgeX + 8, edgeY - 8);
     }
 
     private void drawCursor(double x, double y, Color color, String label) {

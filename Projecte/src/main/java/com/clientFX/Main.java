@@ -131,8 +131,11 @@ public class Main extends Application {
                     case "error":
                         handleErrorMessage(jsonMessage);
                         break;
-                    case "clientDragPiece":
+                    case "dragUpdate":  // ⭐ CORRECCIÓN: Cambiado de "clientDragPiece" a "dragUpdate"
                         handleDragUpdate(jsonMessage);
+                        break;
+                    case "mouseUpdate":  // ⭐ NUEVO: Manejar actualizaciones de mouse
+                        handleMouseUpdate(jsonMessage);
                         break;
                     default:
                         System.out.println("❓ Tipo de mensaje desconocido: " + type);
@@ -141,8 +144,7 @@ public class Main extends Application {
         } catch (Exception e) {
             System.err.println("❌ Error parsing message: " + e.getMessage());
         }
-    }
-    
+    }  
     private static void handleServerData(JSONObject serverData) {
         try {
             GameState gameState = parseGameState(serverData);
@@ -153,6 +155,27 @@ public class Main extends Application {
         }
     }
 
+    // ⭐ NUEVO MÉTODO: Manejar actualizaciones de posición del mouse
+    private static void handleMouseUpdate(JSONObject mouseMsg) {
+        String player = mouseMsg.getString("player");
+        double x = mouseMsg.getDouble("x");
+        double y = mouseMsg.getDouble("y");
+        
+        // Actualizar inmediatamente sin esperar al serverData completo
+        Platform.runLater(() -> {
+            if (!player.equals(Main.playerName)) { // Solo si es el oponente
+                CtrlGame gameCtrl = (CtrlGame) UtilsViews.getController("ViewGame");
+                if (gameCtrl != null && "ViewGame".equals(UtilsViews.getActiveView())) {
+                    // Actualizar posición del mouse del oponente y redibujar
+                    gameCtrl.updateOpponentMousePosition(x, y);
+                    gameCtrl.render(Main.currentGameState); // Redibujar inmediatamente
+                }
+            }
+        });
+    }
+
+
+    // ⭐ MÉTODO ACTUALIZADO: Manejar actualizaciones de drag
     private static void handleDragUpdate(JSONObject dragMsg) {
         String player = dragMsg.getString("player");
         boolean dragging = dragMsg.getBoolean("dragging");
@@ -171,7 +194,7 @@ public class Main extends Application {
                 }
             }
         });
-    }
+}
     
     private static GameState parseGameState(JSONObject json) {
         GameState gameState = new GameState();

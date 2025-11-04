@@ -417,6 +417,17 @@ public class GameSession {
             player2.send(message);
         }
     }
+
+    // Añade este método en GameSession.java para broadcast inmediato de mouse
+    public void broadcastMouseUpdate(String playerName, double x, double y) {
+        JSONObject mouseMsg = new JSONObject();
+        mouseMsg.put("type", "mouseUpdate");
+        mouseMsg.put("player", playerName);
+        mouseMsg.put("x", x);
+        mouseMsg.put("y", y);
+        
+        broadcastToPlayers(mouseMsg.toString());
+    }
     
     public String getPlayerName(WebSocket player) {
         if (player == player1) return player1Name;
